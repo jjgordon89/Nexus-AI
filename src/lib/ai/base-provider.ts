@@ -160,3 +160,5 @@ import { AIProvider, AIRequest, AIResponse } from './types';
 import { AIError } from './error';
 import { AIErrorHandler } from './error-handler';
 import { RetryHandler } from '../retry';
+
+export { BaseAIProvider }
