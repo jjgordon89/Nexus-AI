@@ -111,3 +111,5 @@ export abstract class BaseAIProvider implements AIProvider {
     };
   }
 }
+
+export { BaseAIProvider }
