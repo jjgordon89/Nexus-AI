@@ -45,7 +45,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <Loading size="lg\" text="Initializing database...\" center />
+        <Loading size="lg" text="Initializing database..." center />
       </div>
     );
   }
