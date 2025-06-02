@@ -38,7 +38,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, onCl
         
         <div className="flex items-center gap-2">
           {isPreviewable && document.url && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline\" size="sm\" asChild>
               <a href={document.url} target="_blank" rel="noopener noreferrer">
                 <ExternalLinkIcon className="h-4 w-4 mr-1" />
                 Preview
