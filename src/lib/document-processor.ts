@@ -4,6 +4,7 @@ import { SUPPORTED_FILE_TYPES } from '../types/documents';
 import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import { Document, Packer } from 'docx';
+import { WorkerManager } from './worker-manager';
 
 // Set the PDF.js worker source
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -15,11 +16,17 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pd
  * - Extracting text from PDFs, Word documents, text files, etc.
  * - Processing and formatting the content for use in the AI chat
  * - Creating embeddings for document search and retrieval
+ * 
+ * It now uses Web Workers for heavy processing to prevent UI freezing.
  */
 export class DocumentProcessor {
   private maxFileSize = 25 * 1024 * 1024; // 25MB
   private maxPagesToProcess = 50; // Limit for PDF processing
   private maxWordContentLength = 100000; // Limit for Word document content
+  
+  // Flag to determine if we should use web workers
+  // In some environments or for small files, direct processing might be faster
+  private useWorkers = typeof Worker !== 'undefined' && window.navigator.hardwareConcurrency > 1;
 
   /**
    * Main method to process a file and extract its contents
@@ -41,8 +48,13 @@ export class DocumentProcessor {
     }
 
     try {
-      const content = await this.extractContent(file);
-      return content;
+      // If web workers are available and the file is large, use worker-based processing
+      if (this.useWorkers && file.size > 500 * 1024) { // Only use workers for files > 500KB
+        return await WorkerManager.processFile(file);
+      }
+      
+      // Fall back to direct processing for small files or if workers aren't available
+      return await this.extractContent(file);
     } catch (error) {
       console.error('Error processing document:', error);
       throw new Error('Failed to process document');
@@ -66,7 +78,7 @@ export class DocumentProcessor {
    * @returns Promise resolving to the extracted content
    * @throws Error for unsupported file types
    */
-  private async extractContent(file: File): Promise<string> {
+  async extractContent(file: File): Promise<string> {
     const extension = file.name.split('.').pop()?.toLowerCase();
     
     switch (extension) {

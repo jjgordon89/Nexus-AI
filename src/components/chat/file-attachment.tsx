@@ -1,9 +1,8 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState } from 'react';
 import { FileTextIcon, XIcon, EyeIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatFileSize } from '../../lib/utils';
-import { Loading } from '../ui/loading';
-import { LazyLoad, LazyFilePreview } from '../lazy';
+import { LazyFilePreview } from '../ui/lazy-load-wrapper';
 
 interface FileAttachmentProps {
   file: File;
@@ -51,13 +50,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({ file, onRemove }
       
       {showPreview && (
         <div className="mt-2">
-          <LazyLoad fallback={
-            <div className="p-8 bg-muted/30 rounded-md flex justify-center">
-              <Loading text="Loading preview..." />
-            </div>
-          }>
-            <LazyFilePreview file={file} onClose={() => setShowPreview(false)} />
-          </LazyLoad>
+          <LazyFilePreview file={file} onClose={() => setShowPreview(false)} />
         </div>
       )}
     </div>

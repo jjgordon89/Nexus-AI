@@ -44,6 +44,9 @@ export default defineConfig(({ mode }) => ({
           
           // Split document processing libraries
           'document-processors': ['pdfjs-dist', 'mammoth', 'docx'],
+          
+          // Split virtualization
+          'virtualization': ['react-window'],
         }
       }
     }

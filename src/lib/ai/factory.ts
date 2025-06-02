@@ -2,6 +2,14 @@ import { AIProvider } from './types';
 import { AIError } from './error';
 import { useSettingsStore } from '../../store/settings-store';
 import { config } from '../../config/env';
+import {
+  LazyOpenAIProvider,
+  LazyAnthropicProvider,
+  LazyGoogleProvider,
+  LazyMistralProvider,
+  LazyGroqProvider,
+  LazyHuggingFaceProvider
+} from '../../components/lazy';
 
 /**
  * Regex patterns to validate API key formats for different providers
@@ -121,36 +129,42 @@ export class AIProviderFactory {
 
       // Dynamically import the provider module based on selection
       switch (provider.toLowerCase()) {
-        case 'openai':
-          const { OpenAIProvider } = await import('./providers/openai');
+        case 'openai': {
+          const OpenAIProvider = await LazyOpenAIProvider();
           providerInstance = new OpenAIProvider(apiKey, baseUrl);
           break;
-        case 'google':
-          const { GoogleProvider } = await import('./providers/google');
+        }
+        case 'google': {
+          const GoogleProvider = await LazyGoogleProvider();
           providerInstance = new GoogleProvider(apiKey);
           break;
-        case 'groq':
-          const { GroqProvider } = await import('./providers/groq');
+        }
+        case 'groq': {
+          const GroqProvider = await LazyGroqProvider();
           providerInstance = new GroqProvider(apiKey);
           break;
-        case 'mistral':
-          const { MistralProvider } = await import('./providers/mistral');
+        }
+        case 'mistral': {
+          const MistralProvider = await LazyMistralProvider();
           providerInstance = new MistralProvider(apiKey);
           break;
-        case 'anthropic':
-          const { AnthropicProvider } = await import('./providers/anthropic');
+        }
+        case 'anthropic': {
+          const AnthropicProvider = await LazyAnthropicProvider();
           providerInstance = new AnthropicProvider(apiKey);
           break;
-        case 'huggingface':
-          const { HuggingFaceProvider } = await import('./providers/huggingface');
+        }
+        case 'huggingface': {
+          const HuggingFaceProvider = await LazyHuggingFaceProvider();
           providerInstance = new HuggingFaceProvider(apiKey);
           break;
+        }
         case 'openai-compatible':
           if (!baseUrl) {
             throw new AIError('Base URL is required for OpenAI-compatible providers');
           }
-          const { OpenAIProvider: OpenAICompatProvider } = await import('./providers/openai');
-          providerInstance = new OpenAICompatProvider(apiKey, baseUrl);
+          const OpenAIProvider = await LazyOpenAIProvider();
+          providerInstance = new OpenAIProvider(apiKey, baseUrl);
           break;
         default:
           throw new AIError(`Unsupported AI provider: ${provider}`);
