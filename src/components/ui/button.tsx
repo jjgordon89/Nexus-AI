@@ -36,6 +36,9 @@ interface ButtonProps
   asChild?: boolean;
 }
 
+/**
+ * Button component with multiple variants and sizes
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? React.Fragment : "button";
@@ -51,4 +54,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button,  };
+export { Button, buttonVariants };

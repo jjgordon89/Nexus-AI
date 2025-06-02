@@ -7,6 +7,10 @@ import { Message } from '../../types';
 import { AIProviderFactory } from '../ai/factory';
 import { AIError } from '../ai/error';
 
+/**
+ * Custom hook for chat functionality
+ * Manages message sending, processing state, and error handling
+ */
 export function useChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const { handleError } = useError();
@@ -14,6 +18,10 @@ export function useChat() {
   const { addMessage, isProcessingMessage } = useAppStore();
   const { settings } = useSettingsStore();
 
+  /**
+   * Sends a message to the AI provider
+   * @param content The message content to send
+   */
   const sendMessage = useCallback(async (content: string) => {
     if (isProcessingMessage || !content.trim()) return;
 
@@ -40,6 +48,9 @@ export function useChat() {
     }
   }, [isProcessingMessage, addMessage, settings.ai.streamResponses, showLoading, hideLoading, handleError]);
 
+  /**
+   * Aborts the current streaming message
+   */
   const abortMessage = useCallback(() => {
     setIsStreaming(false);
   }, []);

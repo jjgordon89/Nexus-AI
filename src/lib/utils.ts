@@ -1,29 +1,39 @@
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+/**
+ * Combines multiple class names using clsx and tailwind-merge
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-function debounce<T extends (...args: any[]) => any>(
+/**
+ * Creates a debounced function that delays invoking the provided function
+ * until after the specified wait time has elapsed since the last invocation
+ */
+export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  waitMs: number
 ): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   
   return function executedFunction(...args: Parameters<T>) {
     const later = () => {
-      timeout = null;
+      timeoutId = null;
       func(...args);
     };
     
-    if (timeout !== null) {
-      clearTimeout(timeout);
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
     }
-    timeout = setTimeout(later, wait);
+    timeoutId = setTimeout(later, waitMs);
   };
 }
 
+/**
+ * Formats a date to a human-readable string
+ */
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -34,17 +44,26 @@ export function formatDate(date: Date): string {
   }).format(date);
 }
 
-export const generateSessionId = () => {
+/**
+ * Generates a random session ID
+ */
+export function generateSessionId(): string {
   return Math.random().toString(36).substring(2, 15) + 
          Math.random().toString(36).substring(2, 15);
-};
+}
 
-export const truncateText = (text: string, maxLength: number): string => {
+/**
+ * Truncates text to a specified length and adds ellipsis if needed
+ */
+export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + '...';
-};
+}
 
-function isValidUrl(url: string): boolean {
+/**
+ * Validates if a string is a valid URL
+ */
+export function isValidUrl(url: string): boolean {
   try {
     new URL(url);
     return true;
@@ -53,11 +72,17 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-function getFileExtension(filename: string): string {
+/**
+ * Gets the file extension from a filename
+ */
+export function getFileExtension(filename: string): string {
   return filename.slice(((filename.lastIndexOf(".") - 1) >>> 0) + 2);
 }
 
-export const modelOptions = [
+/**
+ * Available AI model options
+ */
+export const MODEL_OPTIONS = [
   { value: 'gpt-4', label: 'GPT-4' },
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
   { value: 'ollama-llama3', label: 'Llama 3 (Local)' },
@@ -66,10 +91,9 @@ export const modelOptions = [
   { value: 'claude-3-opus', label: 'Claude 3 Opus' },
 ];
 
-const supportedFileTypes = [
-  'pdf', 'txt', 'doc', 'docx', 'rtf', 'csv', 'json', 'md'
-];
-
+/**
+ * Formats file size to a human-readable string with appropriate units
+ */
 export function formatFileSize(bytes: number, decimals: number = 2): string {
   if (bytes === 0) return '0 Bytes';
 

@@ -3,6 +3,10 @@ import { useAppStore } from '../../store/app-store';
 import { useError } from '../../components/ui/error-provider';
 import { ConversationValidator } from '../validators';
 
+/**
+ * Custom hook for conversation management
+ * Provides functions for creating, updating, and deleting conversations
+ */
 export function useConversation() {
   const { 
     conversations, 
@@ -11,12 +15,17 @@ export function useConversation() {
     deleteConversation,
     updateCurrentConversationTitle,
   } = useAppStore();
+  
   const { handleError } = useError();
 
   const currentConversation = conversations.find(
     conv => conv.id === currentConversationId
   );
 
+  /**
+   * Updates the title of the current conversation
+   * @param title The new title to set
+   */
   const updateTitle = useCallback(async (title: string) => {
     try {
       const validatedTitle = await ConversationValidator.parseAsync({ 
@@ -29,6 +38,9 @@ export function useConversation() {
     }
   }, [currentConversation, updateCurrentConversationTitle, handleError]);
 
+  /**
+   * Deletes the current conversation
+   */
   const deleteCurrentConversation = useCallback(() => {
     if (currentConversationId) {
       deleteConversation(currentConversationId);

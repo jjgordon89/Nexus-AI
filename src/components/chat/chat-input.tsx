@@ -14,6 +14,9 @@ interface ChatInputProps {
   isProcessing: boolean;
 }
 
+/**
+ * Component for chat input with file attachment support
+ */
 export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessing }) => {
   const [message, setMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);

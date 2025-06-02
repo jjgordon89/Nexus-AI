@@ -12,6 +12,9 @@ interface ChatMessagesProps {
   isProcessing: boolean;
 }
 
+/**
+ * Component for displaying chat messages with animations
+ */
 export const ChatMessages: React.FC<ChatMessagesProps> = React.memo(({ messages, isProcessing }) => {
   // Use useMemo to avoid recreating the message elements on every render
   const messageElements = useMemo(() => 

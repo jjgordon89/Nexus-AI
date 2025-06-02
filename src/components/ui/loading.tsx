@@ -10,6 +10,9 @@ interface LoadingProps {
   center?: boolean;
 }
 
+/**
+ * Loading indicator component with optional text and sizing
+ */
 export function Loading({ className, size = 'md', text, center = false }: LoadingProps) {
   const sizeClasses = {
     sm: 'h-4 w-4',

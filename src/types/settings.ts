@@ -32,6 +32,9 @@ const LanguageSchema = z.enum(['en', 'es', 'fr', 'de', 'ja', 'zh']);
 const NotificationTypeSchema = z.enum(['all', 'mentions', 'none']);
 const DataRetentionSchema = z.enum(['30days', '90days', '1year', 'forever']);
 
+/**
+ * User settings schema with validation
+ */
 export const UserSettingsSchema = z.object({
   profile: z.object({
     name: z.string().min(2).max(50),
@@ -88,11 +91,14 @@ export const UserSettingsSchema = z.object({
   }),
 });
 
-type AIProvider = z.infer<typeof AIProviderSchema>;
-type AIModel = z.infer<typeof AIModelSchema>;
-type EmbeddingModel = z.infer<typeof EmbeddingModelSchema>;
-type Theme = z.infer<typeof ThemeSchema>;
-type Language = z.infer<typeof LanguageSchema>;
-type NotificationType = z.infer<typeof NotificationTypeSchema>;
-type DataRetention = z.infer<typeof DataRetentionSchema>;
+/**
+ * Type definitions derived from Zod schemas
+ */
+export type AIProvider = z.infer<typeof AIProviderSchema>;
+export type AIModel = z.infer<typeof AIModelSchema>;
+export type EmbeddingModel = z.infer<typeof EmbeddingModelSchema>;
+export type Theme = z.infer<typeof ThemeSchema>;
+export type Language = z.infer<typeof LanguageSchema>;
+export type NotificationType = z.infer<typeof NotificationTypeSchema>;
+export type DataRetention = z.infer<typeof DataRetentionSchema>;
 export type UserSettings = z.infer<typeof UserSettingsSchema>;

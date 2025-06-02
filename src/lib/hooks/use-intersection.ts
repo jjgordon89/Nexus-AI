@@ -4,6 +4,11 @@ interface UseIntersectionOptions extends IntersectionObserverInit {
   freezeOnceVisible?: boolean;
 }
 
+/**
+ * Custom hook for intersection observer
+ * @param options Options for the intersection observer
+ * @returns A tuple with the element ref and a boolean indicating if the element is intersecting
+ */
 export function useIntersection(options: UseIntersectionOptions = {}) {
   const { threshold = 0, root = null, rootMargin = '0px', freezeOnceVisible = false } = options;
 
