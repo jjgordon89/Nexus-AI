@@ -1,16 +1,14 @@
 import { Anthropic } from '@anthropic-ai/sdk';
-import { AIProvider, AIRequest, AIResponse } from '../types';
+import { AIRequest, AIResponse } from '../types';
 import { AIError } from '../error';
-import { ErrorHandler } from '../../error-handler';
-import { AIErrorHandler } from '../error-handler';
+import { BaseAIProvider } from '../base-provider';
 
-export class AnthropicProvider implements AIProvider {
+export class AnthropicProvider extends BaseAIProvider {
+  protected serviceName = 'Anthropic';
   private client: Anthropic;
 
   constructor(apiKey: string) {
-    if (!apiKey) {
-      throw new AIError('Anthropic API key is required');
-    }
+    super(apiKey);
 
     try {
       this.client = new Anthropic({ apiKey });
@@ -19,44 +17,56 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 
-  async chat(request: AIRequest): Promise<AIResponse> {
-    return AIErrorHandler.withErrorHandling(async () => {
-      if (!request.messages.length) {
-        throw new AIError('No messages provided');
-      }
-
-      try {
-        const response = await this.client.messages.create({
-          model: request.model,
-          messages: request.messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          max_tokens: request.maxTokens,
-          temperature: request.temperature,
-        });
-
-        if (!response.content[0].text) {
-          throw new AIError('Empty response from Anthropic');
-        }
-
-        return {
-          id: response.id,
-          model: response.model,
-          message: {
-            role: 'assistant',
-            content: response.content[0].text,
-          },
-          usage: {
-            promptTokens: response.usage?.input_tokens || 0,
-            completionTokens: response.usage?.output_tokens || 0,
-            totalTokens: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
-          },
-        };
-      } catch (error) {
-        // Let AIErrorHandler handle the error categorization
-        throw error;
-      }
+  protected async standardChat(request: AIRequest): Promise<AIResponse> {
+    const response = await this.client.messages.create({
+      model: request.model,
+      messages: request.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      max_tokens: request.maxTokens,
+      temperature: request.temperature,
     });
+
+    if (!response.content[0].text) {
+      throw new AIError('Empty response from Anthropic');
+    }
+
+    return this.formatAIResponse(
+      response.id,
+      response.model,
+      response.content[0].text,
+      response.usage?.input_tokens || 0,
+      response.usage?.output_tokens || 0
+    );
+  }
+
+  protected async streamingChat(request: AIRequest): Promise<AIResponse> {
+    const response = await this.client.messages.create({
+      model: request.model,
+      messages: request.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      max_tokens: request.maxTokens,
+      temperature: request.temperature,
+      stream: true,
+    });
+
+    let content = '';
+    for await (const chunk of response) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        content += chunk.delta.text;
+        if (request.onToken) {
+          request.onToken(chunk.delta.text);
+        }
+      }
+    }
+
+    return this.formatAIResponse(
+      crypto.randomUUID(),
+      request.model,
+      content
+    );
   }
 }

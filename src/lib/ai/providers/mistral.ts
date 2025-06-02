@@ -1,15 +1,14 @@
 import MistralClient from '@mistralai/mistralai';
-import { AIProvider, AIRequest, AIResponse } from '../types';
+import { AIRequest, AIResponse } from '../types';
 import { AIError } from '../error';
-import { ErrorHandler } from '../../error-handler';
+import { BaseAIProvider } from '../base-provider';
 
-export class MistralProvider implements AIProvider {
+export class MistralProvider extends BaseAIProvider {
+  protected serviceName = 'Mistral AI';
   private client: MistralClient;
 
   constructor(apiKey: string) {
-    if (!apiKey) {
-      throw new AIError('Mistral API key is required');
-    }
+    super(apiKey);
 
     try {
       this.client = new MistralClient(apiKey);
@@ -18,68 +17,73 @@ export class MistralProvider implements AIProvider {
     }
   }
 
-  async chat(request: AIRequest): Promise<AIResponse> {
-    return ErrorHandler.handleAsync(async () => {
-      if (!request.messages.length) {
-        throw new AIError('No messages provided');
-      }
-
-      try {
-        const response = await this.client.chat({
-          model: request.model,
-          messages: request.messages,
-          temperature: request.temperature,
-          maxTokens: request.maxTokens,
-          stream: request.stream,
-        });
-
-        if (!response.choices[0].message.content) {
-          throw new AIError('Empty response from Mistral');
-        }
-
-        return {
-          id: response.id,
-          model: response.model,
-          message: {
-            role: 'assistant',
-            content: response.choices[0].message.content,
-          },
-          usage: {
-            promptTokens: response.usage.promptTokens,
-            completionTokens: response.usage.completionTokens,
-            totalTokens: response.usage.totalTokens,
-          },
-        };
-      } catch (error) {
-        if (ErrorHandler.isAuthError(error)) {
-          throw new AIError('Invalid or expired Mistral API key');
-        }
-        if (ErrorHandler.isRateLimitError(error)) {
-          throw new AIError('Mistral rate limit exceeded. Please try again later.');
-        }
-        if (ErrorHandler.isNetworkError(error)) {
-          throw new AIError('Network error while connecting to Mistral');
-        }
-        throw new AIError('Mistral request failed: ' + ErrorHandler.handle(error));
-      }
+  protected async standardChat(request: AIRequest): Promise<AIResponse> {
+    const response = await this.client.chat({
+      model: request.model,
+      messages: request.messages,
+      temperature: request.temperature,
+      maxTokens: request.maxTokens,
+      stream: false,
     });
+
+    if (!response.choices[0].message.content) {
+      throw new AIError('Empty response from Mistral');
+    }
+
+    return this.formatAIResponse(
+      response.id,
+      response.model,
+      response.choices[0].message.content,
+      response.usage.promptTokens,
+      response.usage.completionTokens,
+      response.usage.totalTokens
+    );
+  }
+
+  protected async streamingChat(request: AIRequest): Promise<AIResponse> {
+    const response = await this.client.chatStream({
+      model: request.model,
+      messages: request.messages,
+      temperature: request.temperature,
+      maxTokens: request.maxTokens,
+    });
+
+    let content = '';
+    let responseId = '';
+    let modelName = request.model;
+    
+    for await (const chunk of response) {
+      if (!responseId && chunk.id) {
+        responseId = chunk.id;
+      }
+      if (!modelName && chunk.model) {
+        modelName = chunk.model;
+      }
+      
+      const text = chunk.choices[0]?.delta?.content || '';
+      content += text;
+      
+      if (request.onToken) {
+        request.onToken(text);
+      }
+    }
+
+    return this.formatAIResponse(
+      responseId || crypto.randomUUID(),
+      modelName,
+      content
+    );
   }
 
   async createEmbedding(text: string): Promise<number[]> {
-    return ErrorHandler.handleAsync(async () => {
-      if (!text.trim()) {
-        throw new AIError('Empty text provided for embedding');
-      }
+    if (!text.trim()) {
+      throw new AIError('Empty text provided for embedding');
+    }
 
-      try {
-        const response = await this.client.embeddings({
-          model: 'mistral-embed',
-          input: text,
-        });
-        return response.data[0].embedding;
-      } catch (error) {
-        throw new AIError('Mistral embedding creation failed: ' + ErrorHandler.handle(error));
-      }
+    const response = await this.client.embeddings({
+      model: 'mistral-embed',
+      input: text,
     });
+    return response.data[0].embedding;
   }
 }

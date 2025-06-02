@@ -1,15 +1,14 @@
 import Groq from 'groq-sdk';
-import { AIProvider, AIRequest, AIResponse } from '../types';
+import { AIRequest, AIResponse } from '../types';
 import { AIError } from '../error';
-import { ErrorHandler } from '../../error-handler';
+import { BaseAIProvider } from '../base-provider';
 
-export class GroqProvider implements AIProvider {
+export class GroqProvider extends BaseAIProvider {
+  protected serviceName = 'Groq';
   private client: Groq;
 
   constructor(apiKey: string) {
-    if (!apiKey) {
-      throw new AIError('Groq API key is required');
-    }
+    super(apiKey);
 
     try {
       this.client = new Groq({ apiKey });
@@ -18,50 +17,62 @@ export class GroqProvider implements AIProvider {
     }
   }
 
-  async chat(request: AIRequest): Promise<AIResponse> {
-    return ErrorHandler.handleAsync(async () => {
-      if (!request.messages.length) {
-        throw new AIError('No messages provided');
-      }
-
-      try {
-        const completion = await this.client.chat.completions.create({
-          messages: request.messages,
-          model: request.model,
-          temperature: request.temperature,
-          max_tokens: request.maxTokens,
-          stream: request.stream,
-        });
-
-        if (!completion.choices[0].message.content) {
-          throw new AIError('Empty response from Groq');
-        }
-
-        return {
-          id: completion.id,
-          model: completion.model,
-          message: {
-            role: 'assistant',
-            content: completion.choices[0].message.content,
-          },
-          usage: {
-            promptTokens: completion.usage?.prompt_tokens || 0,
-            completionTokens: completion.usage?.completion_tokens || 0,
-            totalTokens: completion.usage?.total_tokens || 0,
-          },
-        };
-      } catch (error) {
-        if (ErrorHandler.isAuthError(error)) {
-          throw new AIError('Invalid or expired Groq API key');
-        }
-        if (ErrorHandler.isRateLimitError(error)) {
-          throw new AIError('Groq rate limit exceeded. Please try again later.');
-        }
-        if (ErrorHandler.isNetworkError(error)) {
-          throw new AIError('Network error while connecting to Groq');
-        }
-        throw new AIError('Groq request failed: ' + ErrorHandler.handle(error));
-      }
+  protected async standardChat(request: AIRequest): Promise<AIResponse> {
+    const completion = await this.client.chat.completions.create({
+      messages: request.messages,
+      model: request.model,
+      temperature: request.temperature,
+      max_tokens: request.maxTokens,
+      stream: false,
     });
+
+    if (!completion.choices[0].message.content) {
+      throw new AIError('Empty response from Groq');
+    }
+
+    return this.formatAIResponse(
+      completion.id,
+      completion.model,
+      completion.choices[0].message.content,
+      completion.usage?.prompt_tokens || 0,
+      completion.usage?.completion_tokens || 0,
+      completion.usage?.total_tokens || 0
+    );
+  }
+
+  protected async streamingChat(request: AIRequest): Promise<AIResponse> {
+    const stream = await this.client.chat.completions.create({
+      messages: request.messages,
+      model: request.model,
+      temperature: request.temperature,
+      max_tokens: request.maxTokens,
+      stream: true,
+    });
+
+    let content = '';
+    let responseId = '';
+    let modelName = request.model;
+    
+    for await (const chunk of stream) {
+      if (!responseId && chunk.id) {
+        responseId = chunk.id;
+      }
+      if (!modelName && chunk.model) {
+        modelName = chunk.model;
+      }
+      
+      const text = chunk.choices[0]?.delta?.content || '';
+      content += text;
+      
+      if (request.onToken) {
+        request.onToken(text);
+      }
+    }
+
+    return this.formatAIResponse(
+      responseId || crypto.randomUUID(),
+      modelName,
+      content
+    );
   }
 }

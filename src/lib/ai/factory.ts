@@ -35,6 +35,9 @@ const validateBaseUrl = (url: string): void => {
 };
 
 export class AIProviderFactory {
+  // Singleton cache of provider instances for reuse
+  private static providerInstances: Map<string, AIProvider> = new Map();
+  
   static createProvider(provider: string, apiKey?: string, baseUrl?: string): AIProvider {
     // Get the secure API key if none provided
     if (!apiKey) {
@@ -45,11 +48,19 @@ export class AIProviderFactory {
       throw new AIError('API key is required');
     }
 
+    // Check for cached provider instance first
+    const cacheKey = `${provider}:${apiKey}:${baseUrl || ''}`;
+    if (this.providerInstances.has(cacheKey)) {
+      return this.providerInstances.get(cacheKey)!;
+    }
+
     // Rate limit check
     const requestCount = this.getRequestCount();
     if (requestCount > 100) { // 100 requests per minute
       throw new AIError('Rate limit exceeded. Please try again later.');
     }
+    
+    this.incrementRequestCount();
 
     try {
       // Validate API key format
@@ -60,27 +71,41 @@ export class AIProviderFactory {
         validateBaseUrl(baseUrl);
       }
 
+      let providerInstance: AIProvider;
+
       switch (provider.toLowerCase()) {
         case 'openai':
-          return new OpenAIProvider(apiKey);
+          providerInstance = new OpenAIProvider(apiKey);
+          break;
         case 'google':
-          return new GoogleProvider(apiKey);
+          providerInstance = new GoogleProvider(apiKey);
+          break;
         case 'groq':
-          return new GroqProvider(apiKey);
+          providerInstance = new GroqProvider(apiKey);
+          break;
         case 'mistral':
-          return new MistralProvider(apiKey);
+          providerInstance = new MistralProvider(apiKey);
+          break;
         case 'anthropic':
-          return new AnthropicProvider(apiKey);
+          providerInstance = new AnthropicProvider(apiKey);
+          break;
         case 'huggingface':
-          return new HuggingFaceProvider(apiKey);
+          providerInstance = new HuggingFaceProvider(apiKey);
+          break;
         case 'openai-compatible':
           if (!baseUrl) {
             throw new AIError('Base URL is required for OpenAI-compatible providers');
           }
-          return new OpenAIProvider(apiKey, baseUrl);
+          providerInstance = new OpenAIProvider(apiKey, baseUrl);
+          break;
         default:
           throw new AIError(`Unsupported AI provider: ${provider}`);
       }
+
+      // Cache the provider instance
+      this.providerInstances.set(cacheKey, providerInstance);
+      return providerInstance;
+      
     } catch (error) {
       if (error instanceof AIError) {
         throw error;
