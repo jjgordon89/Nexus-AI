@@ -12,7 +12,10 @@
     "clean": "rimraf dist node_modules",
     "typecheck": "tsc --noEmit",
     "analyze": "vite build --mode analyze",
-    "test": "jest"
+    "test": "jest",
+    "server": "tsx server.ts",
+    "dev:full": "concurrently \"npm run dev\" \"npm run server\"",
+    "db:setup": "tsx src/lib/db/setup.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.19.0",
@@ -30,7 +33,10 @@
     "@radix-ui/react-tooltip": "^1.0.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "cors": "^2.8.5",
     "docx": "^8.5.0",
+    "express": "^4.19.2",
+    "express-fileupload": "^1.4.3",
     "framer-motion": "^11.1.6",
     "groq-sdk": "^0.4.0",
     "immer": "^10.0.3",
@@ -55,12 +61,15 @@
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/express-fileupload": "^1.4.4",
+    "@types/node": "^20.11.30",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
@@ -74,6 +83,7 @@
     "rollup-plugin-visualizer": "^5.14.0",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.1.1",
+    "tsx": "^4.7.1",
     "typescript": "^5.4.2",
     "vite": "^5.1.6"
   }

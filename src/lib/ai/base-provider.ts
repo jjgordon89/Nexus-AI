@@ -1,8 +1,3 @@
-import { AIProvider, AIRequest, AIResponse } from './types';
-import { AIError } from './error';
-import { AIErrorHandler } from './error-handler';
-import { RetryHandler } from '../retry';
-
 /**
  * Abstract base class for AI providers
  * 
@@ -160,4 +155,8 @@ export abstract class BaseAIProvider implements AIProvider {
   }
 }
 
-export { BaseAIProvider }
+// Import needed types and utilities
+import { AIProvider, AIRequest, AIResponse } from './types';
+import { AIError } from './error';
+import { AIErrorHandler } from './error-handler';
+import { RetryHandler } from '../retry';
