@@ -47,6 +47,10 @@ const DEFAULT_SETTINGS: UserSettings = {
     embeddingQuality: 0.5,
     batchProcessing: false,
   },
+  performance: {
+    enableConversationVirtualization: true,
+    conversationVirtualizationThreshold: 20,
+  },
 };
 
 interface SettingsStore {
@@ -58,6 +62,7 @@ interface SettingsStore {
   updateNotificationSettings: (notifications: Partial<UserSettings['notifications']>) => void;
   updateDataSettings: (data: Partial<UserSettings['data']>) => void;
   updateAISettings: (ai: Partial<UserSettings['ai']>) => void;
+  updatePerformanceSettings: (performance: Partial<UserSettings['performance']>) => void;
   resetSettings: () => void;
   getSecureApiKey: () => string | null;
 }
@@ -133,6 +138,14 @@ export const useSettingsStore = create<SettingsStore>()(
           settings.ai.apiKey = '';
         }
         
+        set({ settings });
+      },
+
+      updatePerformanceSettings: (performance) => {
+        const settings = {
+          ...get().settings,
+          performance: { ...get().settings.performance, ...performance },
+        };
         set({ settings });
       },
         

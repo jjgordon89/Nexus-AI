@@ -89,6 +89,11 @@ export const UserSettingsSchema = z.object({
     backupFrequency: z.enum(['daily', 'weekly', 'monthly']).default('weekly'),
     storageLimit: z.number().min(100).max(10000).default(1000),
   }),
+  
+  performance: z.object({
+    enableConversationVirtualization: z.boolean().default(true),
+    conversationVirtualizationThreshold: z.number().min(10).max(100).default(20),
+  }),
 });
 
 /**
