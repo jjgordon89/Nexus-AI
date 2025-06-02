@@ -1,16 +1,12 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAppStore } from '../../store/app-store';
-import { MessageItem } from './message-item';
+import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
 import { ChatHeader } from './chat-header';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loading } from '../ui/loading';
-import { Message, Attachment } from '../../types';
+import { EmptyState } from './empty-state';
+import { Attachment } from '../../types';
 import { FileHandler } from '../../lib/file-handler';
 import { nanoid } from 'nanoid';
-
-// Memoized MessageItem to prevent unnecessary re-renders
-const MemoizedMessageItem = React.memo(MessageItem);
 
 export const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,7 +70,7 @@ export const ChatContainer: React.FC = () => {
       }
     }
 
-    const message: Message = {
+    const message = {
       id: nanoid(),
       role: 'user',
       content: enhancedContent.trim(),
@@ -83,7 +79,7 @@ export const ChatContainer: React.FC = () => {
     };
 
     try {
-      await addMessage(message);
+      await addMessage(message as any);
     } catch (error) {
       // Error is handled by the store's error handling
       console.error('Failed to send message:', error);
@@ -92,11 +88,7 @@ export const ChatContainer: React.FC = () => {
 
   // Don't render anything if no conversation is selected
   if (!currentConversation) {
-    return (
-      <div className="flex flex-col h-screen items-center justify-center text-muted-foreground">
-        <p>Select or start a new conversation</p>
-      </div>
-    );
+    return <EmptyState />;
   }
 
   return (
@@ -105,31 +97,10 @@ export const ChatContainer: React.FC = () => {
       
       <main className="flex-1 overflow-y-auto bg-gradient-to-b from-background to-background/50">
         <div className="container max-w-4xl mx-auto px-4 py-8">
-          <AnimatePresence mode="popLayout">
-            {currentConversation.messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="mb-6"
-              >
-                <MemoizedMessageItem message={message} />
-              </motion.div>
-            ))}
-            
-            {isProcessingMessage && (
-              <motion.div
-                key="loading-indicator"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 p-4"
-              >
-                <Loading text="AI is thinking..." />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <ChatMessages 
+            messages={currentConversation.messages} 
+            isProcessing={isProcessingMessage} 
+          />
           <div ref={messagesEndRef} />
         </div>
       </main>
