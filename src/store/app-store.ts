@@ -4,6 +4,8 @@ import { AppState, Conversation, Message } from '../types';
 import { AIProviderFactory } from '../lib/ai/factory';
 import { useSettingsStore } from './settings-store';
 import { AIError } from '../lib/ai/error';
+import { AIErrorHandler } from '../lib/ai/error-handler';
+import { nanoid } from 'nanoid';
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -11,7 +13,7 @@ const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 20;
 
 const DEFAULT_CONVERSATION: Conversation = {
-  id: generateSessionId(),
+  id: nanoid(),
   title: 'New Conversation',
   messages: [],
   createdAt: new Date(),
@@ -69,7 +71,7 @@ export const useAppStore = create<AppState & {
 
   createNewConversation: () => {
     const newConversation: Conversation = {
-      id: generateSessionId(),
+      id: nanoid(),
       title: 'New Conversation',
       messages: [],
       createdAt: new Date(),
@@ -162,7 +164,7 @@ export const useAppStore = create<AppState & {
         });
 
         const aiMessage: Message = {
-          id: generateSessionId(),
+          id: nanoid(),
           role: 'assistant',
           content: response.message.content,
           timestamp: new Date(),
@@ -180,14 +182,13 @@ export const useAppStore = create<AppState & {
           ),
         }));
       } catch (error) {
-        const errorMessage = error instanceof AIError 
-          ? error.message 
-          : 'An error occurred while generating the response. Please try again.';
-
+        // Use the enhanced error handler
+        const aiError = AIErrorHandler.handleError(error);
+        
         const errorSystemMessage: Message = {
-          id: generateSessionId(),
+          id: nanoid(),
           role: 'system',
-          content: errorMessage,
+          content: aiError.message,
           timestamp: new Date(),
         };
 

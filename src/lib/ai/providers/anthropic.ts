@@ -2,6 +2,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { AIProvider, AIRequest, AIResponse } from '../types';
 import { AIError } from '../error';
 import { ErrorHandler } from '../../error-handler';
+import { AIErrorHandler } from '../error-handler';
 
 export class AnthropicProvider implements AIProvider {
   private client: Anthropic;
@@ -19,7 +20,7 @@ export class AnthropicProvider implements AIProvider {
   }
 
   async chat(request: AIRequest): Promise<AIResponse> {
-    return ErrorHandler.handleAsync(async () => {
+    return AIErrorHandler.withErrorHandling(async () => {
       if (!request.messages.length) {
         throw new AIError('No messages provided');
       }
@@ -53,16 +54,8 @@ export class AnthropicProvider implements AIProvider {
           },
         };
       } catch (error) {
-        if (ErrorHandler.isAuthError(error)) {
-          throw new AIError('Invalid or expired Anthropic API key');
-        }
-        if (ErrorHandler.isRateLimitError(error)) {
-          throw new AIError('Anthropic rate limit exceeded. Please try again later.');
-        }
-        if (ErrorHandler.isNetworkError(error)) {
-          throw new AIError('Network error while connecting to Anthropic');
-        }
-        throw new AIError('Anthropic request failed: ' + ErrorHandler.handle(error));
+        // Let AIErrorHandler handle the error categorization
+        throw error;
       }
     });
   }

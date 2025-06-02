@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { AIProvider, AIRequest, AIResponse } from '../types';
 import { AIError } from '../error';
 import { ErrorHandler } from '../../error-handler';
+import { AIErrorHandler } from '../error-handler';
 
 export class GoogleProvider implements AIProvider {
   private client: GoogleGenerativeAI;
@@ -19,7 +20,7 @@ export class GoogleProvider implements AIProvider {
   }
 
   async chat(request: AIRequest): Promise<AIResponse> {
-    return ErrorHandler.handleAsync(async () => {
+    return AIErrorHandler.withErrorHandling(async () => {
       if (!request.messages.length) {
         throw new AIError('No messages provided');
       }
@@ -65,16 +66,8 @@ export class GoogleProvider implements AIProvider {
           },
         };
       } catch (error) {
-        if (ErrorHandler.isAuthError(error)) {
-          throw new AIError('Invalid or expired Google API key');
-        }
-        if (ErrorHandler.isRateLimitError(error)) {
-          throw new AIError('Google AI rate limit exceeded. Please try again later.');
-        }
-        if (ErrorHandler.isNetworkError(error)) {
-          throw new AIError('Network error while connecting to Google AI');
-        }
-        throw new AIError('Google AI request failed: ' + ErrorHandler.handle(error));
+        // Let AIErrorHandler handle the error categorization
+        throw error;
       }
     });
   }

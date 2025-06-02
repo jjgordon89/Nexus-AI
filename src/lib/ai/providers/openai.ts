@@ -4,6 +4,7 @@ import { AIError } from '../error';
 import { ErrorHandler } from '../../error-handler';
 import { RetryHandler } from '../../retry';
 import { StreamingHandler } from '../../streaming-handler';
+import { AIErrorHandler } from '../error-handler';
 
 export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
@@ -24,7 +25,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async chat(request: AIRequest): Promise<AIResponse> {
-    return ErrorHandler.handleAsync(async () => {
+    return AIErrorHandler.withErrorHandling(async () => {
       if (!request.messages.length) {
         throw new AIError('No messages provided');
       }
@@ -89,23 +90,15 @@ export class OpenAIProvider implements AIProvider {
             },
           };
         } catch (error) {
-          if (ErrorHandler.isAuthError(error)) {
-            throw new AIError('Invalid or expired OpenAI API key');
-          }
-          if (ErrorHandler.isRateLimitError(error)) {
-            throw new AIError('OpenAI rate limit exceeded. Please try again later.');
-          }
-          if (ErrorHandler.isNetworkError(error)) {
-            throw new AIError('Network error while connecting to OpenAI');
-          }
-          throw new AIError('OpenAI request failed: ' + ErrorHandler.handle(error));
+          // Let AIErrorHandler handle the error categorization
+          throw error;
         }
       });
     });
   }
 
   async createEmbedding(text: string): Promise<number[]> {
-    return ErrorHandler.handleAsync(async () => {
+    return AIErrorHandler.withErrorHandling(async () => {
       if (!text.trim()) {
         throw new AIError('Empty text provided for embedding');
       }
@@ -118,7 +111,7 @@ export class OpenAIProvider implements AIProvider {
           });
           return response.data[0].embedding;
         } catch (error) {
-          throw new AIError('OpenAI embedding creation failed: ' + ErrorHandler.handle(error));
+          throw error;
         }
       });
     });
