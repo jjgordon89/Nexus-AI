@@ -83,6 +83,18 @@ export class FileHandler {
   }
 
   /**
+   * Reads a file as ArrayBuffer
+   */
+  static async readAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  /**
    * Releases the URL for an attachment
    */
   static releaseAttachment(attachment: Attachment): void {

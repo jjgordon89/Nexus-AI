@@ -7,6 +7,7 @@ import { MessageValidator } from '../../lib/validators';
 import { useToast } from '../ui/toast';
 import { Attachment } from '../../types';
 import { FileHandler } from '../../lib/file-handler';
+import { FileAttachment } from './file-attachment';
 
 interface ChatInputProps {
   onSendMessage: (content: string, files?: File[]) => void;
@@ -90,12 +91,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
           const attachment = await FileHandler.createAttachment(file);
           validFiles.push(file);
           newAttachments.push(attachment);
-          
-          // Preview file content for text-based files
-          if (file.type === 'text/plain' || file.type === 'text/markdown' || file.type === 'application/json' || file.type === 'text/csv') {
-            const preview = await FileHandler.extractContent(file);
-            console.log(`File preview for ${file.name}:`, preview.substring(0, 200) + (preview.length > 200 ? '...' : ''));
-          }
         } catch (error) {
           toast({
             title: 'Error',
@@ -167,23 +162,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="flex flex-wrap gap-2 mb-3"
+              className="flex flex-col gap-2 mb-3"
             >
               {attachments.map((attachment, index) => (
-                <div
+                <FileAttachment 
                   key={attachment.id}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-sm group"
-                >
-                  <span className="truncate max-w-[200px]">{attachment.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeFile(index)}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </div>
+                  file={selectedFiles[index]}
+                  onRemove={() => removeFile(index)}
+                />
               ))}
             </motion.div>
           )}
@@ -277,4 +263,4 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
       </div>
     </div>
   );
-}
+};
