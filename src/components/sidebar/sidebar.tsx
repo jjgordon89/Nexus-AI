@@ -1,11 +1,15 @@
-import React, { useState, lazy } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
 import { Loading } from '../ui/loading';
 import { SidebarHeader } from './sidebar-header';
 import { SidebarContent } from './sidebar-content';
 import { SidebarFooter } from './sidebar-footer';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LazySettingsDialog } from '../lazy';
+
+// Lazy load settings dialog
+const LazySettingsDialog = lazy(() => 
+  import('../settings/settings-dialog').then(module => ({ default: module.SettingsDialog }))
+);
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -40,13 +44,13 @@ export const Sidebar: React.FC = () => {
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent className="max-w-4xl p-0">
           <DialogTitle className="sr-only">Settings</DialogTitle>
-          <LazyLoad fallback={
+          <Suspense fallback={
             <div className="h-[600px] flex items-center justify-center">
               <Loading text="Loading settings..." />
             </div>
           }>
             <LazySettingsDialog />
-          </LazyLoad>
+          </Suspense>
         </DialogContent>
       </Dialog>
       
@@ -64,12 +68,3 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
-
-// Helper component for lazy loading
-function LazyLoad({ children, fallback }: { children: React.ReactNode, fallback: React.ReactNode }) {
-  return (
-    <React.Suspense fallback={fallback}>
-      {children}
-    </React.Suspense>
-  );
-}

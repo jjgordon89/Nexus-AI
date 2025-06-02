@@ -1,10 +1,37 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useSettingsStore } from '../../store/settings-store';
-import { LazyLoad, LazyProfileSettings, LazyAISettings, LazyAppearanceSettings, 
-         LazyPrivacySettings, LazyNotificationSettings, LazyDataSettings, 
-         LazyAboutSettings } from '../lazy';
+import { LazyLoad } from '../lazy';
 import { Loading } from '../ui/loading';
+
+// Lazy import settings sections from their index files
+const LazyProfileSettings = React.lazy(() => 
+  import('./sections/profile-settings').then(module => ({ default: module.ProfileSettings }))
+);
+
+const LazyAISettings = React.lazy(() => 
+  import('./sections/ai-settings/index').then(module => ({ default: module.AISettings }))
+);
+
+const LazyAppearanceSettings = React.lazy(() => 
+  import('./sections/appearance-settings/index').then(module => ({ default: module.AppearanceSettings }))
+);
+
+const LazyPrivacySettings = React.lazy(() => 
+  import('./sections/privacy-settings').then(module => ({ default: module.PrivacySettings }))
+);
+
+const LazyNotificationSettings = React.lazy(() => 
+  import('./sections/notification-settings/index').then(module => ({ default: module.NotificationSettings }))
+);
+
+const LazyDataSettings = React.lazy(() => 
+  import('./sections/data-settings/index').then(module => ({ default: module.DataSettings }))
+);
+
+const LazyAboutSettings = React.lazy(() => 
+  import('./sections/about-settings').then(module => ({ default: module.AboutSettings }))
+);
 
 const TabContentLoader = ({ children }: { children: React.ReactNode }) => (
   <LazyLoad fallback={
