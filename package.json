@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "analyze": "vite build --mode analyze",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "server": "tsx server.ts",
     "dev:full": "concurrently \"npm run dev\" \"npm run server\"",
     "db:setup": "tsx src/lib/db/setup.js"
@@ -87,6 +89,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-watch-typeahead": "^2.2.2",
     "jsdom": "^23.0.1",
+    "msw": "^2.2.10",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",
     "rollup-plugin-visualizer": "^5.14.0",
