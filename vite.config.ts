@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => ({
   ],
   optimizeDeps: {
     exclude: ['lucide-react', 'docx'],
-    include: ['@libsql/client'],
     esbuildOptions: {
       target: 'es2022'
     }
