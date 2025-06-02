@@ -27,7 +27,7 @@ createRoot(document.getElementById('root')!).render(
         <TooltipProvider>
           <Suspense fallback={
             <div className="flex items-center justify-center h-screen bg-background">
-              <Loading size="lg\" text="Loading NexusAI\" center />
+              <Loading size="lg\" text=\"Loading NexusAI\" center />
             </div>
           }>
             <App />
