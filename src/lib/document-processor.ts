@@ -3,7 +3,7 @@ import { useSettingsStore } from '../store/settings-store';
 import { SUPPORTED_FILE_TYPES } from '../types/documents';
 import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
-import * as docx from 'docx';
+import { Document, Packer } from 'docx';
 
 // Set the PDF.js worker source
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -156,7 +156,7 @@ export class DocumentProcessor {
   /**
    * Extracts text from Word documents (.doc and .docx files)
    * 
-   * Uses mammoth.js for .docx files and attempts to use docx for .doc files
+   * Uses mammoth.js for .docx files
    * 
    * @param file - Word document file
    * @returns Promise resolving to the extracted text
@@ -181,16 +181,9 @@ export class DocumentProcessor {
       } else if (file.name.endsWith('.doc')) {
         // For .doc files, use alternative approach
         // Since direct .doc parsing is limited in browser, provide useful info
-        try {
-          // Try to use docx to open it (might work for some .doc files)
-          const document = await docx.read(arrayBuffer);
-          const text = docx.utils.extractText(document);
-          return `Word Document (.doc): ${file.name}\n\n${text}`;
-        } catch (e) {
-          const fileSize = (file.size / 1024).toFixed(2);
-          return `Word Document (.doc): ${file.name} (${fileSize} KB)\n\n` +
-            `[Legacy .doc format - limited content extraction available in browser. For best results, consider converting to .docx]`;
-        }
+        const fileSize = (file.size / 1024).toFixed(2);
+        return `Word Document (.doc): ${file.name} (${fileSize} KB)\n\n` +
+          `[Legacy .doc format - limited content extraction available in browser. For best results, consider converting to .docx]`;
       }
       
       // Fallback for unknown Word format
