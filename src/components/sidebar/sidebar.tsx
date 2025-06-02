@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
-import { SettingsDialog } from '../settings/settings-dialog';
 import { ThemeToggle } from '../theme-toggle';
+import { Loading } from '../ui/loading';
 import { 
   ChevronLeftIcon, 
   ChevronRightIcon,
@@ -15,6 +15,7 @@ import {
 import { ConversationList } from '../chat/conversation-list';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
+import { LazyLoad, LazySettingsDialog } from '../lazy';
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -147,7 +148,13 @@ export const Sidebar: React.FC = () => {
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent className="max-w-4xl p-0">
           <DialogTitle className="sr-only">Settings</DialogTitle>
-          <SettingsDialog />
+          <LazyLoad fallback={
+            <div className="h-[600px] flex items-center justify-center">
+              <Loading text="Loading settings..." />
+            </div>
+          }>
+            <LazySettingsDialog />
+          </LazyLoad>
         </DialogContent>
       </Dialog>
       

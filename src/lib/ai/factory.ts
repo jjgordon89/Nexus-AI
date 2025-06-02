@@ -1,10 +1,4 @@
 import { AIProvider } from './types';
-import { OpenAIProvider } from './providers/openai';
-import { GoogleProvider } from './providers/google';
-import { GroqProvider } from './providers/groq';
-import { MistralProvider } from './providers/mistral';
-import { AnthropicProvider } from './providers/anthropic';
-import { HuggingFaceProvider } from './providers/huggingface';
 import { AIError } from './error';
 import { useSettingsStore } from '../../store/settings-store';
 
@@ -38,7 +32,7 @@ export class AIProviderFactory {
   // Singleton cache of provider instances for reuse
   private static providerInstances: Map<string, AIProvider> = new Map();
   
-  static createProvider(provider: string, apiKey?: string, baseUrl?: string): AIProvider {
+  static async createProvider(provider: string, apiKey?: string, baseUrl?: string): Promise<AIProvider> {
     // Get the secure API key if none provided
     if (!apiKey) {
       apiKey = useSettingsStore.getState().getSecureApiKey();
@@ -73,30 +67,38 @@ export class AIProviderFactory {
 
       let providerInstance: AIProvider;
 
+      // Dynamically import the provider module based on selection
       switch (provider.toLowerCase()) {
         case 'openai':
+          const { OpenAIProvider } = await import('./providers/openai');
           providerInstance = new OpenAIProvider(apiKey);
           break;
         case 'google':
+          const { GoogleProvider } = await import('./providers/google');
           providerInstance = new GoogleProvider(apiKey);
           break;
         case 'groq':
+          const { GroqProvider } = await import('./providers/groq');
           providerInstance = new GroqProvider(apiKey);
           break;
         case 'mistral':
+          const { MistralProvider } = await import('./providers/mistral');
           providerInstance = new MistralProvider(apiKey);
           break;
         case 'anthropic':
+          const { AnthropicProvider } = await import('./providers/anthropic');
           providerInstance = new AnthropicProvider(apiKey);
           break;
         case 'huggingface':
+          const { HuggingFaceProvider } = await import('./providers/huggingface');
           providerInstance = new HuggingFaceProvider(apiKey);
           break;
         case 'openai-compatible':
           if (!baseUrl) {
             throw new AIError('Base URL is required for OpenAI-compatible providers');
           }
-          providerInstance = new OpenAIProvider(apiKey, baseUrl);
+          const { OpenAIProvider: OpenAICompatProvider } = await import('./providers/openai');
+          providerInstance = new OpenAICompatProvider(apiKey, baseUrl);
           break;
         default:
           throw new AIError(`Unsupported AI provider: ${provider}`);

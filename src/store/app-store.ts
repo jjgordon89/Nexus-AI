@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { generateSessionId } from '../lib/utils';
 import { AppState, Conversation, Message } from '../types';
-import { AIProviderFactory } from '../lib/ai/factory';
-import { useSettingsStore } from './settings-store';
 import { AIError } from '../lib/ai/error';
 import { AIErrorHandler } from '../lib/ai/error-handler';
 import { nanoid } from 'nanoid';
@@ -88,7 +86,7 @@ export const useAppStore = create<AppState & {
       messages: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      model: useSettingsStore.getState().settings.ai.model,
+      model: 'gpt-4',
     };
 
     set(produce(state => {
@@ -108,7 +106,6 @@ export const useAppStore = create<AppState & {
       }
 
       const state = get();
-      const settings = useSettingsStore.getState().settings;
       const conversation = state.conversations.find(
         (conv) => conv.id === state.currentConversationId
       );
@@ -139,14 +136,19 @@ export const useAppStore = create<AppState & {
         set({ isProcessingMessage: true });
 
         try {
+          // Dynamically import the AI factory to reduce initial bundle size
+          const { AIProviderFactory } = await import('../lib/ai/factory');
+          const { useSettingsStore } = await import('../store/settings-store');
+          
           // Get secure API key
           const apiKey = useSettingsStore.getState().getSecureApiKey();
+          const settings = useSettingsStore.getState().settings;
           
           if (!apiKey) {
             throw new AIError('API key is required. Please configure it in settings.');
           }
 
-          const provider = AIProviderFactory.createProvider(
+          const provider = await AIProviderFactory.createProvider(
             settings.ai.provider,
             apiKey,
             settings.ai.baseUrl

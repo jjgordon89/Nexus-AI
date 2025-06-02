@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useSettingsStore } from '../../store/settings-store';
-import { ProfileSettings } from './sections/profile-settings';
-import { AppearanceSettings } from './sections/appearance-settings';
-import { PrivacySettings } from './sections/privacy-settings';
-import { NotificationSettings } from './sections/notification-settings';
-import { DataSettings } from './sections/data-settings';
-import { AISettings } from './sections/ai-settings';
-import { AboutSettings } from './sections/about-settings';
+import { LazyLoad, LazyProfileSettings, LazyAISettings, LazyAppearanceSettings, 
+         LazyPrivacySettings, LazyNotificationSettings, LazyDataSettings, 
+         LazyAboutSettings } from '../lazy';
+import { Loading } from '../ui/loading';
+
+const TabContentLoader = ({ children }: { children: React.ReactNode }) => (
+  <LazyLoad fallback={
+    <div className="flex items-center justify-center h-[500px]">
+      <Loading text="Loading settings..." />
+    </div>
+  }>
+    {children}
+  </LazyLoad>
+);
 
 export const SettingsDialog: React.FC = () => {
   const { settings } = useSettingsStore();
@@ -64,25 +71,39 @@ export const SettingsDialog: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto">
           <Tabs.Content value="profile" className="p-6">
-            <ProfileSettings />
+            <TabContentLoader>
+              <LazyProfileSettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="ai" className="p-6">
-            <AISettings />
+            <TabContentLoader>
+              <LazyAISettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="appearance" className="p-6">
-            <AppearanceSettings />
+            <TabContentLoader>
+              <LazyAppearanceSettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="privacy" className="p-6">
-            <PrivacySettings />
+            <TabContentLoader>
+              <LazyPrivacySettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="notifications" className="p-6">
-            <NotificationSettings />
+            <TabContentLoader>
+              <LazyNotificationSettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="data" className="p-6">
-            <DataSettings />
+            <TabContentLoader>
+              <LazyDataSettings />
+            </TabContentLoader>
           </Tabs.Content>
           <Tabs.Content value="about" className="p-6">
-            <AboutSettings />
+            <TabContentLoader>
+              <LazyAboutSettings />
+            </TabContentLoader>
           </Tabs.Content>
         </div>
       </Tabs.Root>
