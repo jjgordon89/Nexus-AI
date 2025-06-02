@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import DOMPurify from 'dompurify';
 
 /**
  * Zod schema for validating messages
@@ -19,7 +20,8 @@ export const MessageValidator = z.object({
       {
         message: 'Message contains potentially harmful content',
       }
-    ),
+    )
+    .transform((content) => DOMPurify.sanitize(content)), // Sanitize with DOMPurify
   attachments: z
     .array(
       z.object({
@@ -38,7 +40,8 @@ export const ConversationValidator = z.object({
   title: z
     .string()
     .min(1, 'Title cannot be empty')
-    .max(100, 'Title is too long (max 100 characters)'),
+    .max(100, 'Title is too long (max 100 characters)')
+    .transform((title) => DOMPurify.sanitize(title)), // Sanitize with DOMPurify
   model: z.string(),
 });
 

@@ -6,11 +6,61 @@
 
 import { Message, Conversation, Attachment } from '../types';
 import { UserSettings } from '../types/settings';
+import { sanitizeJson } from './sanitizer';
 
 // Base URL for API requests
 const API_BASE_URL = import.meta.env.DEV 
   ? 'http://localhost:3001/api'
   : '/api';
+
+// Store the auth token
+let authToken: string | null = null;
+
+/**
+ * Set the authentication token for API requests
+ */
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  
+  // Store the token in localStorage (with expiry)
+  if (token) {
+    const tokenData = {
+      value: token,
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    };
+    localStorage.setItem('auth_token', JSON.stringify(tokenData));
+  } else {
+    localStorage.removeItem('auth_token');
+  }
+}
+
+/**
+ * Get the stored authentication token
+ */
+export function getAuthToken(): string | null {
+  if (authToken) {
+    return authToken;
+  }
+  
+  // Try to get from localStorage
+  const tokenData = localStorage.getItem('auth_token');
+  if (tokenData) {
+    try {
+      const { value, expires } = JSON.parse(tokenData);
+      if (Date.now() < expires) {
+        authToken = value;
+        return value;
+      } else {
+        // Token expired, remove it
+        localStorage.removeItem('auth_token');
+      }
+    } catch (error) {
+      console.error('Error parsing auth token:', error);
+    }
+  }
+  
+  return null;
+}
 
 /**
  * Generic API request function with error handling
@@ -21,23 +71,41 @@ async function apiRequest<T>(
   body?: any
 ): Promise<T> {
   try {
+    // Get the auth token
+    const token = getAuthToken();
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add auth token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include', // Include cookies for authentication
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify(sanitizeJson(body)) : undefined,
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
+      
+      // Handle unauthorized errors
+      if (response.status === 401) {
+        // Clear the token
+        setAuthToken(null);
+      }
+      
       throw new Error(
         errorData?.message || `API request failed with status ${response.status}`
       );
     }
 
-    return await response.json();
+    const data = await response.json();
+    return sanitizeJson<T>(data);
   } catch (error) {
     console.error(`API request to ${endpoint} failed:`, error);
     throw error;
@@ -45,15 +113,51 @@ async function apiRequest<T>(
 }
 
 /**
- * File upload function
+ * File upload function with security measures
  */
 async function uploadFile(file: File): Promise<Attachment> {
   try {
+    // Get the auth token
+    const token = getAuthToken();
+    
+    // Create a new FormData instance
     const formData = new FormData();
+    
+    // Validate file before upload
+    if (file.size > 25 * 1024 * 1024) {
+      throw new Error('File size exceeds 25MB limit');
+    }
+    
+    // Whitelist of allowed MIME types
+    const allowedTypes = [
+      'text/plain', 
+      'text/markdown',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/csv',
+      'application/json',
+      'image/jpeg',
+      'image/png',
+      'image/gif'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('File type not supported');
+    }
+    
     formData.append('file', file);
+
+    const headers: Record<string, string> = {};
+    
+    // Add auth token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(`${API_BASE_URL}/files/upload`, {
       method: 'POST',
+      headers,
       credentials: 'include', // Include cookies for authentication
       body: formData,
     });
@@ -65,7 +169,8 @@ async function uploadFile(file: File): Promise<Attachment> {
       );
     }
 
-    return await response.json();
+    const data = await response.json();
+    return sanitizeJson<Attachment>(data);
   } catch (error) {
     console.error('File upload failed:', error);
     throw error;
@@ -73,9 +178,87 @@ async function uploadFile(file: File): Promise<Attachment> {
 }
 
 /**
+ * Authentication API functions
+ */
+export const authApi = {
+  /**
+   * Login with email and password
+   */
+  login: async (email: string, password: string): Promise<{ user: any; token: string }> => {
+    const response = await apiRequest<{ user: any; token: string }>('/auth/login', 'POST', {
+      email,
+      password,
+    });
+    
+    // Store the token
+    setAuthToken(response.token);
+    
+    return response;
+  },
+  
+  /**
+   * Register a new user
+   */
+  register: async (email: string, password: string, name?: string): Promise<{ user: any; token: string }> => {
+    const response = await apiRequest<{ user: any; token: string }>('/auth/register', 'POST', {
+      email,
+      password,
+      name,
+    });
+    
+    // Store the token
+    setAuthToken(response.token);
+    
+    return response;
+  },
+  
+  /**
+   * Logout the current user
+   */
+  logout: async (): Promise<void> => {
+    await apiRequest('/auth/logout', 'POST');
+    setAuthToken(null);
+  },
+  
+  /**
+   * Change password
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiRequest('/auth/change-password', 'POST', {
+      currentPassword,
+      newPassword,
+    });
+  },
+  
+  /**
+   * Request password reset
+   */
+  requestPasswordReset: async (email: string): Promise<void> => {
+    await apiRequest('/auth/request-reset', 'POST', {
+      email,
+    });
+  },
+  
+  /**
+   * Reset password
+   */
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    await apiRequest('/auth/reset-password', 'POST', {
+      token,
+      newPassword,
+    });
+  },
+};
+
+/**
  * API client with methods for each endpoint
  */
 export const apiClient = {
+  /**
+   * Auth API
+   */
+  auth: authApi,
+
   /**
    * Chat API
    */
@@ -106,18 +289,28 @@ export const apiClient = {
       messages: { role: string; content: string }[],
       options?: { temperature?: number; maxTokens?: number }
     ): Promise<ReadableStream> => {
+      // Get the auth token
+      const token = getAuthToken();
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add auth token if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
-        body: JSON.stringify({
+        body: JSON.stringify(sanitizeJson({
           provider,
           model,
           messages,
           ...options,
-        }),
+        })),
       });
 
       if (!response.ok) {

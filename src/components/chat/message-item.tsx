@@ -5,7 +5,7 @@ import { BotIcon, User2Icon } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { motion } from 'framer-motion';
 import { Loading } from '../ui/loading';
-import ReactMarkdown from 'react-markdown';
+import { MessageContent } from '../ui/message-content';
 
 interface MessageItemProps {
   message: Message;
@@ -80,9 +80,7 @@ const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
                 <Loading size="sm\" text="Thinking..." />
               </div>
             ) : (
-              <div className="prose prose-invert max-w-none message-content">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              </div>
+              <MessageContent content={message.content} />
             )}
 
             {attachmentsElement}

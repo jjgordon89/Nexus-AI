@@ -1,0 +1,8 @@
+# robots.txt for NexusAI
+User-agent: *
+Disallow: /api/
+Disallow: /settings/
+Disallow: /user/
+Allow: /
+
+Sitemap: https://nexusai.app/sitemap.xml

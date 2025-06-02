@@ -50,7 +50,15 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 3000,
-    host: true
+    host: true,
+    // Set up CSP in development too
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   base: '/',
 }));
