@@ -1,4 +1,5 @@
 import { AIError } from './error';
+import { config } from '../../config/env';
 
 /**
  * Enhanced error handler specifically for AI-related errors
@@ -132,6 +133,12 @@ export class AIErrorHandler {
     const category = this.categorizeError(error);
     const baseMessage = error instanceof Error ? error.message : 'An error occurred';
     
+    // In development mode, use more detailed error messages
+    if (config.isDevelopment) {
+      return baseMessage;
+    }
+    
+    // In production, use user-friendly messages
     switch (category) {
       case this.CATEGORY.AUTHENTICATION:
         return 'Authentication failed. Please check your API key in settings.';
@@ -202,6 +209,12 @@ export class AIErrorHandler {
       
       if (customErrorHandler) {
         customErrorHandler(aiError);
+      }
+
+      if (config.errorTracking.enabled && config.errorTracking.dsn) {
+        // If error tracking is enabled, we could log the error here
+        // This would be integrated with a service like Sentry
+        console.error('[Error Tracking]', aiError);
       }
       
       throw aiError;

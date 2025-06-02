@@ -1,11 +1,12 @@
 import { nanoid } from 'nanoid';
 import { Attachment } from '../types';
 import { DocumentProcessor } from './document-processor';
+import { getMaxFileSize } from '../config/env';
 
 /**
- * Maximum allowed file size in bytes (25MB)
+ * Maximum allowed file size in bytes (from env config)
  */
-const MAX_FILE_SIZE = 25 * 1024 * 1024; 
+const MAX_FILE_SIZE = getMaxFileSize(); 
 
 /**
  * List of file types that are allowed for upload

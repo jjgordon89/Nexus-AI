@@ -1,6 +1,7 @@
 import { AIProvider } from './types';
 import { AIError } from './error';
 import { useSettingsStore } from '../../store/settings-store';
+import { config } from '../../config/env';
 
 /**
  * Regex patterns to validate API key formats for different providers
@@ -74,7 +75,19 @@ export class AIProviderFactory {
   static async createProvider(provider: string, apiKey?: string, baseUrl?: string): Promise<AIProvider> {
     // Get the secure API key if none provided
     if (!apiKey) {
-      apiKey = useSettingsStore.getState().getSecureApiKey();
+      // Try getting from .env file via config
+      const configKey = config.api[provider as keyof typeof config.api];
+      if (configKey) {
+        apiKey = configKey;
+      } else {
+        // Fallback to secure store
+        apiKey = useSettingsStore.getState().getSecureApiKey();
+      }
+    }
+    
+    // Get base URL from config if not provided
+    if (!baseUrl && provider === 'openai') {
+      baseUrl = config.apiBaseUrls.openai;
     }
     
     if (!apiKey) {
@@ -110,7 +123,7 @@ export class AIProviderFactory {
       switch (provider.toLowerCase()) {
         case 'openai':
           const { OpenAIProvider } = await import('./providers/openai');
-          providerInstance = new OpenAIProvider(apiKey);
+          providerInstance = new OpenAIProvider(apiKey, baseUrl);
           break;
         case 'google':
           const { GoogleProvider } = await import('./providers/google');
