@@ -6,7 +6,7 @@
  */
 
 import { getFileExtension } from './utils';
-import pdfjs from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
 // Set the PDF.js worker source
