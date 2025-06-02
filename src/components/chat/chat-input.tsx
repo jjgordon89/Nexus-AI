@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { MessageValidator } from '../../lib/validators';
 import { useToast } from '../ui/toast';
+import { Attachment } from '../../types';
+import { FileHandler } from '../../lib/file-handler';
 
 interface ChatInputProps {
   onSendMessage: (content: string, files?: File[]) => void;
@@ -15,6 +17,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
   const [message, setMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -35,6 +38,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
       onSendMessage(message, selectedFiles);
       setMessage('');
       setSelectedFiles([]);
+      setAttachments([]);
     } catch (error) {
       if (error instanceof Error) {
         toast({
@@ -57,24 +61,53 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      if (file.size > 25 * 1024 * 1024) {
+    
+    if (files.length === 0) return;
+    
+    const validFiles: File[] = [];
+    const newAttachments: Attachment[] = [];
+    
+    for (const file of files) {
+      const validation = FileHandler.validateFile(file);
+      
+      if (!validation.valid) {
         toast({
-          title: 'Error',
-          description: `${file.name} exceeds 25MB size limit`,
+          title: 'Invalid File',
+          description: validation.message,
           variant: 'destructive',
         });
-        return false;
+        continue;
       }
-      return true;
-    });
+      
+      try {
+        const attachment = await FileHandler.createAttachment(file);
+        validFiles.push(file);
+        newAttachments.push(attachment);
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to process file',
+          variant: 'destructive',
+        });
+      }
+    }
+    
     setSelectedFiles(prev => [...prev, ...validFiles]);
+    setAttachments(prev => [...prev, ...newAttachments]);
+    
+    // Reset the file input
     e.target.value = '';
   };
 
   const removeFile = (index: number) => {
+    const attachment = attachments[index];
+    if (attachment && attachment.url) {
+      FileHandler.releaseAttachment(attachment);
+    }
+    
+    setAttachments(prev => prev.filter((_, i) => i !== index));
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -94,23 +127,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
     adjustTextareaHeight();
   }, [message]);
 
+  // Clean up any blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      attachments.forEach(attachment => {
+        if (attachment.url) {
+          FileHandler.releaseAttachment(attachment);
+        }
+      });
+    };
+  }, []);
+
   return (
     <div className="border-t border-border py-4 bg-background/80 backdrop-blur-sm sticky bottom-0 z-10">
       <div className="container max-w-4xl mx-auto px-4">
         <AnimatePresence>
-          {selectedFiles.length > 0 && (
+          {attachments.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               className="flex flex-wrap gap-2 mb-3"
             >
-              {selectedFiles.map((file, index) => (
+              {attachments.map((attachment, index) => (
                 <div
-                  key={index}
+                  key={attachment.id}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-sm group"
                 >
-                  <span className="truncate max-w-[200px]">{file.name}</span>
+                  <span className="truncate max-w-[200px]">{attachment.name}</span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -152,7 +196,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
               className="hidden"
               multiple
               onChange={handleFileChange}
-              accept=".txt,.md,.pdf,.doc,.docx,.csv"
+              accept=".txt,.md,.pdf,.doc,.docx,.csv,.json"
             />
             
             <div className="flex-1 relative">
@@ -213,4 +257,4 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
       </div>
     </div>
   );
-};
+}

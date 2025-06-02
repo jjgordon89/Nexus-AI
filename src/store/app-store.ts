@@ -125,13 +125,16 @@ export const useAppStore = create<AppState & {
       set({ isProcessingMessage: true });
 
       try {
-        if (!settings.ai.apiKey) {
+        // Get secure API key
+        const apiKey = useSettingsStore.getState().getSecureApiKey();
+        
+        if (!apiKey) {
           throw new AIError('API key is required. Please configure it in settings.');
         }
 
         const provider = AIProviderFactory.createProvider(
           settings.ai.provider,
-          settings.ai.apiKey,
+          apiKey,
           settings.ai.baseUrl
         );
 

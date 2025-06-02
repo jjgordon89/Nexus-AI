@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserSettings } from '../types/settings';
+import { secureStorage } from '../lib/secure-storage';
 
 const DEFAULT_SETTINGS: UserSettings = {
   profile: {
@@ -58,6 +59,7 @@ interface SettingsStore {
   updateDataSettings: (data: Partial<UserSettings['data']>) => void;
   updateAISettings: (ai: Partial<UserSettings['ai']>) => void;
   resetSettings: () => void;
+  getSecureApiKey: () => string | null;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -67,6 +69,14 @@ export const useSettingsStore = create<SettingsStore>()(
       
       updateSettings: (newSettings) => {
         const settings = { ...get().settings, ...newSettings };
+        
+        // Store API key securely if present
+        if (newSettings.ai?.apiKey) {
+          secureStorage.setItem('api_key', newSettings.ai.apiKey);
+          // Remove API key from the state to avoid storing it in localStorage
+          settings.ai.apiKey = '';
+        }
+        
         set({ settings });
       },
         
@@ -115,11 +125,25 @@ export const useSettingsStore = create<SettingsStore>()(
           ...get().settings,
           ai: { ...get().settings.ai, ...ai },
         };
+        
+        // Store API key securely if present
+        if (ai.apiKey) {
+          secureStorage.setItem('api_key', ai.apiKey);
+          // Remove API key from the state to avoid storing it in localStorage
+          settings.ai.apiKey = '';
+        }
+        
         set({ settings });
       },
         
       resetSettings: () => {
+        // Clear secure storage
+        secureStorage.clear();
         set({ settings: DEFAULT_SETTINGS });
+      },
+      
+      getSecureApiKey: () => {
+        return secureStorage.getItem('api_key');
       },
     }),
     {

@@ -6,6 +6,7 @@ import { MistralProvider } from './providers/mistral';
 import { AnthropicProvider } from './providers/anthropic';
 import { HuggingFaceProvider } from './providers/huggingface';
 import { AIError } from './error';
+import { useSettingsStore } from '../../store/settings-store';
 
 const API_KEY_PATTERNS = {
   openai: /^sk-[A-Za-z0-9]{32,}$/,
@@ -34,7 +35,12 @@ const validateBaseUrl = (url: string): void => {
 };
 
 export class AIProviderFactory {
-  static createProvider(provider: string, apiKey: string, baseUrl?: string): AIProvider {
+  static createProvider(provider: string, apiKey?: string, baseUrl?: string): AIProvider {
+    // Get the secure API key if none provided
+    if (!apiKey) {
+      apiKey = useSettingsStore.getState().getSecureApiKey();
+    }
+    
     if (!apiKey) {
       throw new AIError('API key is required');
     }

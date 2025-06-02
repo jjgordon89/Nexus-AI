@@ -3,6 +3,13 @@ import { useAppStore } from '../../store/app-store';
 import { useSettingsStore } from '../../store/settings-store';
 import { Button } from '../ui/button';
 import { PlusIcon, MoreHorizontalIcon, Share2Icon, ExternalLinkIcon, PencilIcon, CheckIcon, XIcon } from 'lucide-react';
+import { ExportHandler } from '../../lib/export-handler';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '../ui/dropdown';
 
 export const ChatHeader: React.FC = () => {
   const { 
@@ -49,6 +56,12 @@ export const ChatHeader: React.FC = () => {
       handleSave();
     } else if (e.key === 'Escape') {
       handleCancel();
+    }
+  };
+  
+  const handleExport = (format: 'json' | 'markdown' | 'text' | 'html') => {
+    if (currentConversation) {
+      ExportHandler.exportConversation(currentConversation, format);
     }
   };
   
@@ -110,10 +123,28 @@ export const ChatHeader: React.FC = () => {
               Share
             </Button>
             
-            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5">
-              <ExternalLinkIcon className="h-3.5 w-3.5" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5">
+                  <ExternalLinkIcon className="h-3.5 w-3.5" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('markdown')}>
+                  Export as Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('text')}>
+                  Export as Text
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('html')}>
+                  Export as HTML
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Button
               variant="gradient"

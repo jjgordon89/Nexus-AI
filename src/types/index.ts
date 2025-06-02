@@ -1,4 +1,12 @@
-type MessageRole = 'user' | 'assistant' | 'system' | 'function';
+export type MessageRole = 'user' | 'assistant' | 'system' | 'function';
+
+export interface Attachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url?: string;
+}
 
 export interface Message {
   id: string;
@@ -7,14 +15,6 @@ export interface Message {
   timestamp: Date;
   isThinking?: boolean;
   attachments?: Attachment[];
-}
-
-interface Attachment {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  url?: string;
 }
 
 export interface Conversation {
@@ -26,21 +26,21 @@ export interface Conversation {
   model: string;
 }
 
-interface AIModel {
+export interface AIModel {
   id: string;
   name: string;
   provider: 'openai' | 'anthropic' | 'ollama' | 'grok' | 'huggingface' | 'custom';
   isLocal: boolean;
 }
 
-interface APIProvider {
+export interface APIProvider {
   name: string;
   key: string;
   baseUrl?: string;
   models: string[];
 }
 
-interface UserPreferences {
+export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   defaultModel: string;
   enableLocalModels: boolean;
@@ -48,7 +48,7 @@ interface UserPreferences {
   maxHistoryLength: number;
 }
 
-interface VectorDBConfig {
+export interface VectorDBConfig {
   type: 'chroma' | 'milvus' | 'pinecone' | 'local';
   connectionString?: string;
   apiKey?: string;
@@ -59,13 +59,11 @@ export interface AppState {
   conversations: Conversation[];
   currentConversationId: string | null;
   preferences: UserPreferences;
-  apiProviders: APIProvider[];
   isProcessingMessage: boolean;
-  availableModels: AIModel[];
   documents: Document[];
 }
 
-interface Document {
+export interface Document {
   id: string;
   name: string;
   type: string;

@@ -5,7 +5,9 @@ import { ChatInput } from './chat-input';
 import { ChatHeader } from './chat-header';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loading } from '../ui/loading';
-import { Message } from '../../types';
+import { Message, Attachment } from '../../types';
+import { FileHandler } from '../../lib/file-handler';
+import { nanoid } from 'nanoid';
 
 export const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -29,14 +31,39 @@ export const ChatContainer: React.FC = () => {
     scrollToBottom();
   }, [currentConversation?.messages, scrollToBottom]);
 
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !currentConversation) return;
+  const handleSendMessage = async (content: string, files?: File[]) => {
+    if ((!content.trim() && (!files || files.length === 0)) || !currentConversation) return;
+
+    let attachments: Attachment[] | undefined;
+    let enhancedContent = content;
+
+    // Process file attachments if present
+    if (files && files.length > 0) {
+      attachments = [];
+      
+      try {
+        // Process each file
+        for (const file of files) {
+          const attachment = await FileHandler.createAttachment(file);
+          attachments.push(attachment);
+          
+          // For text-based files, extract content and append to message
+          if (file.type.startsWith('text/') || file.type === 'application/json') {
+            const fileContent = await FileHandler.extractContent(file);
+            enhancedContent += `\n\n**Content from ${file.name}:**\n\`\`\`\n${fileContent}\n\`\`\``;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to process attachments:', error);
+      }
+    }
 
     const message: Message = {
-      id: crypto.randomUUID(),
+      id: nanoid(),
       role: 'user',
-      content: content.trim(),
+      content: enhancedContent.trim(),
       timestamp: new Date(),
+      attachments
     };
 
     try {
