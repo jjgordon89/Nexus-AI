@@ -27,8 +27,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
     e.preventDefault();
     
     try {
+      // Validate message content with our schema
       MessageValidator.parse({ content: message });
       
+      // Validate total file size
       if (selectedFiles.length > 0) {
         const totalSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
         if (totalSize > 25 * 1024 * 1024) {

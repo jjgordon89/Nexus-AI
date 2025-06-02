@@ -4,7 +4,7 @@ import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
 import { ChatHeader } from './chat-header';
 import { EmptyState } from './empty-state';
-import { Attachment } from '../../types';
+import { Message, Attachment } from '../../types';
 import { FileHandler } from '../../lib/file-handler';
 import { nanoid } from 'nanoid';
 
@@ -70,7 +70,7 @@ export const ChatContainer: React.FC = () => {
       }
     }
 
-    const message = {
+    const message: Message = {
       id: nanoid(),
       role: 'user',
       content: enhancedContent.trim(),
@@ -79,7 +79,7 @@ export const ChatContainer: React.FC = () => {
     };
 
     try {
-      await addMessage(message as any);
+      await addMessage(message);
     } catch (error) {
       // Error is handled by the store's error handling
       console.error('Failed to send message:', error);
