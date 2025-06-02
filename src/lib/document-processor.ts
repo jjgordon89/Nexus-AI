@@ -8,11 +8,26 @@ import * as docx from 'docx';
 // Set the PDF.js worker source
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+/**
+ * DocumentProcessor handles extraction and processing of content from various file types
+ * 
+ * This class is responsible for:
+ * - Extracting text from PDFs, Word documents, text files, etc.
+ * - Processing and formatting the content for use in the AI chat
+ * - Creating embeddings for document search and retrieval
+ */
 export class DocumentProcessor {
   private maxFileSize = 25 * 1024 * 1024; // 25MB
   private maxPagesToProcess = 50; // Limit for PDF processing
   private maxWordContentLength = 100000; // Limit for Word document content
 
+  /**
+   * Main method to process a file and extract its contents
+   * 
+   * @param file - The file to process
+   * @returns Promise resolving to the extracted content as text
+   * @throws Error for unsupported file types or processing failures
+   */
   async processFile(file: File): Promise<string> {
     // Validate file size
     if (file.size > this.maxFileSize) {
@@ -34,10 +49,23 @@ export class DocumentProcessor {
     }
   }
 
+  /**
+   * Checks if a file extension is supported
+   * 
+   * @param extension - The file extension to check
+   * @returns Boolean indicating if the file type is supported
+   */
   private isSupportedFileType(extension: string): boolean {
     return Object.values(SUPPORTED_FILE_TYPES).flat().includes(extension);
   }
 
+  /**
+   * Extracts content from a file based on its type
+   * 
+   * @param file - The file to extract content from
+   * @returns Promise resolving to the extracted content
+   * @throws Error for unsupported file types
+   */
   private async extractContent(file: File): Promise<string> {
     const extension = file.name.split('.').pop()?.toLowerCase();
     
@@ -65,10 +93,22 @@ export class DocumentProcessor {
     }
   }
 
+  /**
+   * Extracts content from a plain text file
+   * 
+   * @param file - Text file to extract content from
+   * @returns Promise resolving to the text content
+   */
   private async extractTextContent(file: File): Promise<string> {
     return await file.text();
   }
 
+  /**
+   * Extracts text content from a PDF file using PDF.js
+   * 
+   * @param file - PDF file to extract content from
+   * @returns Promise resolving to the extracted text
+   */
   private async extractPDFContent(file: File): Promise<string> {
     try {
       // Convert the file to an ArrayBuffer
@@ -113,6 +153,14 @@ export class DocumentProcessor {
     }
   }
 
+  /**
+   * Extracts text from Word documents (.doc and .docx files)
+   * 
+   * Uses mammoth.js for .docx files and attempts to use docx for .doc files
+   * 
+   * @param file - Word document file
+   * @returns Promise resolving to the extracted text
+   */
   private async extractWordContent(file: File): Promise<string> {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -157,6 +205,12 @@ export class DocumentProcessor {
     }
   }
 
+  /**
+   * Extracts and formats content from a CSV file
+   * 
+   * @param file - CSV file to process
+   * @returns Promise resolving to formatted CSV content
+   */
   private async extractCSVContent(file: File): Promise<string> {
     const text = await file.text();
     
@@ -196,6 +250,12 @@ export class DocumentProcessor {
     }
   }
   
+  /**
+   * Extracts and formats content from a JSON file
+   * 
+   * @param file - JSON file to process
+   * @returns Promise resolving to formatted JSON content
+   */
   private async extractJSONContent(file: File): Promise<string> {
     const text = await file.text();
     try {
@@ -246,14 +306,25 @@ export class DocumentProcessor {
     }
   }
 
+  /**
+   * Creates embedding vectors for text using the configured AI provider
+   * 
+   * @param text - Text to create embeddings for
+   * @returns Promise resolving to the embedding vector
+   * @throws Error if the provider doesn't support embeddings
+   */
   async createEmbeddings(text: string): Promise<number[]> {
+    // Get settings from the store
     const settings = useSettingsStore.getState().settings;
-    const provider = AIProviderFactory.createProvider(
+    
+    // Create AI provider instance
+    const provider = await AIProviderFactory.createProvider(
       settings.ai.provider,
       settings.ai.apiKey || '',
       settings.ai.baseUrl
     );
 
+    // Check if the provider supports embeddings
     if ('createEmbedding' in provider && typeof provider.createEmbedding === 'function') {
       return await provider.createEmbedding(text);
     }

@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+/**
+ * Zod schema for validating messages
+ * 
+ * This ensures:
+ * - Messages aren't empty
+ * - Messages don't exceed the maximum length
+ * - Messages don't contain harmful content patterns
+ * - Attachments are properly validated
+ */
 export const MessageValidator = z.object({
   content: z
     .string()
@@ -22,6 +31,9 @@ export const MessageValidator = z.object({
     .optional(),
 });
 
+/**
+ * Zod schema for validating conversations
+ */
 export const ConversationValidator = z.object({
   title: z
     .string()
@@ -30,7 +42,17 @@ export const ConversationValidator = z.object({
   model: z.string(),
 });
 
-// Helper function to detect potential injection patterns
+/**
+ * Helper function to detect potential injection patterns
+ * 
+ * This function checks for:
+ * - SQL injection patterns
+ * - Prompt injection attempts
+ * - XSS (Cross-site scripting) patterns
+ * 
+ * @param content - The content to check
+ * @returns Boolean indicating if suspicious patterns were found
+ */
 function containsInjectionPatterns(content: string): boolean {
   // Check for common SQL injection patterns
   const sqlPatterns = [

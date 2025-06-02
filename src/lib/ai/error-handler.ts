@@ -2,25 +2,35 @@ import { AIError } from './error';
 
 /**
  * Enhanced error handler specifically for AI-related errors
- * Provides consistent error handling across all AI providers
+ * 
+ * This utility class provides:
+ * - Consistent error handling across all AI providers
+ * - Error categorization for specific error types
+ * - User-friendly error messages
+ * - Standardized error wrapping
  */
 export class AIErrorHandler {
-  // Error categories
+  /**
+   * Error categories for classification
+   */
   static readonly CATEGORY = {
-    AUTHENTICATION: 'authentication',
-    RATE_LIMIT: 'rate_limit',
-    NETWORK: 'network',
-    SERVER: 'server',
-    VALIDATION: 'validation',
-    TIMEOUT: 'timeout',
-    MODEL: 'model',
-    CONTENT_FILTER: 'content_filter',
-    QUOTA: 'quota',
-    UNKNOWN: 'unknown'
+    AUTHENTICATION: 'authentication',  // API key, auth issues
+    RATE_LIMIT: 'rate_limit',          // Too many requests
+    NETWORK: 'network',                // Connection issues
+    SERVER: 'server',                  // Provider server errors
+    VALIDATION: 'validation',          // Invalid parameters
+    TIMEOUT: 'timeout',                // Request timeout
+    MODEL: 'model',                    // Unavailable models
+    CONTENT_FILTER: 'content_filter',  // Content policy violations
+    QUOTA: 'quota',                    // Usage limits
+    UNKNOWN: 'unknown'                 // Default category
   };
   
   /**
-   * Analyzes an error and determines its category
+   * Analyzes an error and determines its category based on the error message
+   * 
+   * @param error - The error to categorize
+   * @returns The error category string
    */
   static categorizeError(error: unknown): string {
     const message = error instanceof Error ? error.message.toLowerCase() : '';
@@ -114,6 +124,9 @@ export class AIErrorHandler {
   
   /**
    * Returns a user-friendly error message based on the error category
+   * 
+   * @param error - The error to get a message for
+   * @returns A user-friendly error message
    */
   static getUserMessage(error: unknown): string {
     const category = this.categorizeError(error);
@@ -155,6 +168,9 @@ export class AIErrorHandler {
   
   /**
    * Handles an error and returns a standardized AIError
+   * 
+   * @param error - The error to handle
+   * @returns A standardized AIError
    */
   static handleError(error: unknown): AIError {
     const userMessage = this.getUserMessage(error);
@@ -170,6 +186,10 @@ export class AIErrorHandler {
   
   /**
    * Wraps an async function with standardized error handling
+   * 
+   * @param operation - The async function to wrap
+   * @param customErrorHandler - Optional custom error handler
+   * @returns Promise with the operation result
    */
   static async withErrorHandling<T>(
     operation: () => Promise<T>,

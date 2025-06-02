@@ -8,11 +8,17 @@ import { produce } from 'immer';
 import { MessageValidator } from '../lib/validators';
 import { z } from 'zod';
 
+/**
+ * Constants for app store configuration
+ */
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES_PER_CONVERSATION = 100;
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 20;
 
+/**
+ * Default conversation when starting the app
+ */
 const DEFAULT_CONVERSATION: Conversation = {
   id: nanoid(),
   title: 'New Conversation',
@@ -22,16 +28,28 @@ const DEFAULT_CONVERSATION: Conversation = {
   model: 'gpt-4',
 };
 
+/**
+ * Interface for tracking rate limiting
+ */
 interface RateLimitInfo {
   timestamp: number;
   count: number;
 }
 
+/**
+ * Rate limit tracking
+ */
 let rateLimitInfo: RateLimitInfo = {
   timestamp: Date.now(),
   count: 0,
 };
 
+/**
+ * Check if the current request would exceed rate limits
+ * Resets counter when window changes
+ * 
+ * @returns Boolean indicating if request is allowed
+ */
 const checkRateLimit = (): boolean => {
   const now = Date.now();
   if (now - rateLimitInfo.timestamp > RATE_LIMIT_WINDOW) {
@@ -40,11 +58,20 @@ const checkRateLimit = (): boolean => {
   return rateLimitInfo.count < MAX_REQUESTS_PER_WINDOW;
 };
 
+/**
+ * Increment the rate limit counter
+ */
 const incrementRateLimit = () => {
   rateLimitInfo.count++;
 };
 
-// Helper function to sanitize message content
+/**
+ * Sanitizes message content by removing HTML tags and normalizing whitespace
+ * Used as a security measure to prevent injection attacks
+ * 
+ * @param content - The message content to sanitize
+ * @returns Sanitized string
+ */
 const sanitizeContent = (content: string): string => {
   // Basic sanitization: strip HTML tags, trim, and normalize whitespace
   return content
@@ -53,6 +80,18 @@ const sanitizeContent = (content: string): string => {
     .replace(/\s+/g, ' ');
 };
 
+/**
+ * Main application state store using Zustand
+ * 
+ * This store manages:
+ * - Chat conversations
+ * - Messages within conversations
+ * - User preferences
+ * - Application state (loading, processing)
+ * 
+ * The store uses immer for immutable updates, which makes
+ * state updates more concise and easier to understand.
+ */
 export const useAppStore = create<AppState & {
   setCurrentConversation: (id: string) => void;
   createNewConversation: () => void;
@@ -76,9 +115,16 @@ export const useAppStore = create<AppState & {
   isProcessingMessage: false,
   documents: [],
 
+  /**
+   * Sets the current active conversation
+   * @param id - ID of the conversation to set as current
+   */
   setCurrentConversation: (id) => 
     set({ currentConversationId: id }),
 
+  /**
+   * Creates a new conversation and sets it as the current one
+   */
   createNewConversation: () => {
     const newConversation: Conversation = {
       id: nanoid(),
@@ -95,6 +141,19 @@ export const useAppStore = create<AppState & {
     }));
   },
 
+  /**
+   * Adds a message to the current conversation
+   * If it's a user message, also generates an AI response
+   * 
+   * This function implements the core message flow:
+   * 1. Validate the user message
+   * 2. Add the user message to the conversation
+   * 3. If it's a user message, send it to the AI provider
+   * 4. Handle streaming if enabled
+   * 5. Add the AI response to the conversation
+   * 
+   * @param message - The message to add
+   */
   addMessage: async (message) => {
     try {
       // Step 1: Validate the message
@@ -281,6 +340,12 @@ export const useAppStore = create<AppState & {
     }
   },
 
+  /**
+   * Updates an existing message in the current conversation
+   * 
+   * @param id - ID of the message to update
+   * @param updates - Partial Message object with updates to apply
+   */
   updateMessage: (id, updates) =>
     set(produce(state => {
       const conversation = state.conversations.find(
@@ -297,9 +362,20 @@ export const useAppStore = create<AppState & {
       }
     })),
 
+  /**
+   * Sets the isProcessingMessage flag to indicate AI is processing
+   * 
+   * @param isProcessing - Boolean indicating if a message is being processed
+   */
   setIsProcessingMessage: (isProcessing) =>
     set({ isProcessingMessage }),
 
+  /**
+   * Deletes a conversation by ID
+   * If the deleted conversation is the current one, switches to another conversation
+   * 
+   * @param id - ID of the conversation to delete
+   */
   deleteConversation: (id) =>
     set(produce(state => {
       const index = state.conversations.findIndex(conv => conv.id === id);
@@ -314,11 +390,21 @@ export const useAppStore = create<AppState & {
       }
     })),
 
+  /**
+   * Updates user preferences
+   * 
+   * @param preferences - Partial preferences object with changes
+   */
   updatePreferences: (preferences) =>
     set(produce(state => {
       Object.assign(state.preferences, preferences);
     })),
 
+  /**
+   * Updates the title of the current conversation
+   * 
+   * @param title - New title for the conversation
+   */
   updateCurrentConversationTitle: (title) =>
     set(produce(state => {
       const conversation = state.conversations.find(
@@ -330,6 +416,9 @@ export const useAppStore = create<AppState & {
       }
     })),
 
+  /**
+   * Clears all messages from the current conversation
+   */
   clearMessages: () =>
     set(produce(state => {
       const conversation = state.conversations.find(
@@ -342,7 +431,13 @@ export const useAppStore = create<AppState & {
     })),
 }));
 
-// Validate and sanitize the message
+/**
+ * Validates and sanitizes a message
+ * 
+ * @param message - The message to validate
+ * @returns Promise resolving to the validated and sanitized message
+ * @throws AIError if validation fails
+ */
 async function validateMessage(message: Message): Promise<Message> {
   try {
     // First, sanitize the content

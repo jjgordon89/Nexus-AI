@@ -2,6 +2,9 @@ import { AIProvider } from './types';
 import { AIError } from './error';
 import { useSettingsStore } from '../../store/settings-store';
 
+/**
+ * Regex patterns to validate API key formats for different providers
+ */
 const API_KEY_PATTERNS = {
   openai: /^sk-[A-Za-z0-9]{32,}$/,
   google: /^[A-Za-z0-9_-]{39}$/,
@@ -11,6 +14,13 @@ const API_KEY_PATTERNS = {
   huggingface: /^hf_[A-Za-z0-9]{32,}$/,
 };
 
+/**
+ * Validates an API key against the expected format for a given provider
+ * 
+ * @param provider - The AI provider name
+ * @param apiKey - The API key to validate
+ * @throws {AIError} If the API key doesn't match the expected format
+ */
 const validateApiKey = (provider: string, apiKey: string): void => {
   const pattern = API_KEY_PATTERNS[provider as keyof typeof API_KEY_PATTERNS];
   if (!pattern) return; // Skip validation for unknown providers
@@ -20,6 +30,12 @@ const validateApiKey = (provider: string, apiKey: string): void => {
   }
 };
 
+/**
+ * Validates that a URL string is properly formatted
+ * 
+ * @param url - The URL to validate
+ * @throws {AIError} If the URL is not properly formatted
+ */
 const validateBaseUrl = (url: string): void => {
   try {
     new URL(url);
@@ -28,10 +44,33 @@ const validateBaseUrl = (url: string): void => {
   }
 };
 
+/**
+ * Factory class for creating AI provider instances
+ * 
+ * This class implements the Factory pattern to create appropriate AI provider
+ * instances based on the requested provider type. It handles:
+ * - Provider instantiation with proper configuration
+ * - Caching of provider instances for reuse
+ * - API key validation and security
+ * - Rate limiting to prevent API abuse
+ * - Dynamic loading of provider modules to reduce initial bundle size
+ */
 export class AIProviderFactory {
   // Singleton cache of provider instances for reuse
   private static providerInstances: Map<string, AIProvider> = new Map();
   
+  /**
+   * Creates an AI provider instance based on the specified provider type
+   * 
+   * This method dynamically imports the appropriate provider module to 
+   * reduce initial bundle size and only load what's needed.
+   * 
+   * @param provider - The type of AI provider to create
+   * @param apiKey - Optional API key (retrieved from secure storage if not provided)
+   * @param baseUrl - Optional base URL for custom API endpoints
+   * @returns A Promise resolving to an AIProvider instance
+   * @throws {AIError} If provider creation fails for any reason
+   */
   static async createProvider(provider: string, apiKey?: string, baseUrl?: string): Promise<AIProvider> {
     // Get the secure API key if none provided
     if (!apiKey) {
@@ -116,13 +155,25 @@ export class AIProviderFactory {
     }
   }
 
+  /**
+   * Tracking object for rate limiting
+   * Keys are time periods (minutes), values are request counts
+   */
   private static requestCounts: { [key: number]: number } = {};
 
+  /**
+   * Gets the current request count for rate limiting
+   * @returns The number of requests in the current minute
+   */
   private static getRequestCount(): number {
     const now = Math.floor(Date.now() / 1000 / 60); // Current minute
     return this.requestCounts[now] || 0;
   }
 
+  /**
+   * Increments the request count for the current minute
+   * Also cleans up old count data to prevent memory leaks
+   */
   private static incrementRequestCount(): void {
     const now = Math.floor(Date.now() / 1000 / 60);
     this.requestCounts[now] = (this.requestCounts[now] || 0) + 1;

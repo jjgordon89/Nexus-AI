@@ -2,12 +2,29 @@ import { nanoid } from 'nanoid';
 
 /**
  * A utility for securely storing sensitive information like API keys
- * Uses a combination of localStorage and sessionStorage with simple encryption
+ * 
+ * This class provides:
+ * - Secure storage for sensitive data like API keys
+ * - Simple encryption to protect values in localStorage
+ * - Fallback mechanisms if encryption fails
+ * 
+ * Security approach:
+ * 1. Uses a session-specific encryption key stored in sessionStorage
+ * 2. Encrypts values using XOR encryption before storing in localStorage
+ * 3. Adds randomized IDs to prevent correlation between entries
+ * 
+ * Note: This is not military-grade encryption but provides better
+ * security than plaintext storage while maintaining usability
  */
 export class SecureStorage {
   private readonly storagePrefix: string;
   private readonly encryptionKey: string;
 
+  /**
+   * Creates a new SecureStorage instance
+   * 
+   * @param namespace - Optional namespace prefix for stored items
+   */
   constructor(namespace: string = 'nexus') {
     this.storagePrefix = `${namespace}_secure_`;
     // Create or retrieve an encryption key stored in sessionStorage
@@ -17,8 +34,9 @@ export class SecureStorage {
 
   /**
    * Stores a value securely
-   * @param key The key to store the value under
-   * @param value The value to store
+   * 
+   * @param key - The key to store the value under
+   * @param value - The value to store
    */
   setItem(key: string, value: string): void {
     if (!value) return;
@@ -45,7 +63,8 @@ export class SecureStorage {
 
   /**
    * Retrieves a securely stored value
-   * @param key The key to retrieve
+   * 
+   * @param key - The key to retrieve
    * @returns The decrypted value or null if not found
    */
   getItem(key: string): string | null {
@@ -68,7 +87,8 @@ export class SecureStorage {
 
   /**
    * Removes a securely stored value
-   * @param key The key to remove
+   * 
+   * @param key - The key to remove
    */
   removeItem(key: string): void {
     localStorage.removeItem(`${this.storagePrefix}${key}`);
@@ -86,6 +106,11 @@ export class SecureStorage {
     });
   }
 
+  /**
+   * Gets or creates an encryption key for the current session
+   * 
+   * @returns The encryption key
+   */
   private getOrCreateEncryptionKey(): string {
     const sessionKey = 'nexus_encryption_key';
     let key = sessionStorage.getItem(sessionKey);
@@ -99,6 +124,12 @@ export class SecureStorage {
     return key;
   }
 
+  /**
+   * Simple XOR encryption for the stored value
+   * 
+   * @param text - Text to encrypt
+   * @returns Encrypted and base64-encoded text
+   */
   private encrypt(text: string): string {
     // Simple XOR encryption - not cryptographically secure but better than plaintext
     // For production, use a proper encryption library
@@ -110,6 +141,12 @@ export class SecureStorage {
     return btoa(result); // Base64 encode the result
   }
 
+  /**
+   * Decrypts text that was encrypted with the encrypt method
+   * 
+   * @param encryptedText - Base64-encoded encrypted text
+   * @returns Original decrypted text
+   */
   private decrypt(encryptedText: string): string {
     try {
       const text = atob(encryptedText); // Base64 decode
