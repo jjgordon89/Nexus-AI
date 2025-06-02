@@ -91,9 +91,9 @@ export const useAppStore = create<AppState & {
       model: useSettingsStore.getState().settings.ai.model,
     };
 
-    set((state) => ({
-      conversations: [...state.conversations, newConversation],
-      currentConversationId: newConversation.id,
+    set(produce(state => {
+      state.conversations.push(newConversation);
+      state.currentConversationId = newConversation.id;
     }));
   },
 
@@ -122,23 +122,17 @@ export const useAppStore = create<AppState & {
         throw new AIError(`Conversation has reached the maximum limit of ${MAX_MESSAGES_PER_CONVERSATION} messages`);
       }
 
-      // Step 4: Add user message to the conversation
-      set((state) => {
-        const convIndex = state.conversations.findIndex(
+      // Step 4: Add user message to the conversation - use Immer for immutable updates
+      set(produce(state => {
+        const conversation = state.conversations.find(
           (conv) => conv.id === state.currentConversationId
         );
         
-        if (convIndex === -1) return state;
-        
-        const updatedConversations = [...state.conversations];
-        updatedConversations[convIndex] = {
-          ...updatedConversations[convIndex],
-          messages: [...updatedConversations[convIndex].messages, validatedMessage],
-          updatedAt: new Date(),
-        };
-        
-        return { conversations: updatedConversations };
-      });
+        if (conversation) {
+          conversation.messages.push(validatedMessage);
+          conversation.updatedAt = new Date();
+        }
+      }));
 
       // Step 5: If it's a user message, generate AI response
       if (validatedMessage.role === 'user') {
@@ -186,6 +180,34 @@ export const useAppStore = create<AppState & {
             temperature: settings.ai.temperature,
             maxTokens: settings.ai.maxTokens,
             stream: settings.ai.streamResponses,
+            onToken: settings.ai.streamResponses ? (token) => {
+              // If streaming is enabled, update the partial response
+              set(produce(state => {
+                const conversation = state.conversations.find(
+                  conv => conv.id === state.currentConversationId
+                );
+                
+                // Find or create a streaming message
+                let streamingMessage = conversation?.messages.find(
+                  msg => msg.isStreaming === true && msg.role === 'assistant'
+                );
+                
+                if (!streamingMessage && conversation) {
+                  // Create a new streaming message
+                  streamingMessage = {
+                    id: nanoid(),
+                    role: 'assistant',
+                    content: token,
+                    timestamp: new Date(),
+                    isStreaming: true
+                  };
+                  conversation.messages.push(streamingMessage);
+                } else if (streamingMessage) {
+                  // Update existing streaming message
+                  streamingMessage.content += token;
+                }
+              }));
+            } : undefined
           });
 
           // Step 7: Create AI response message
@@ -197,22 +219,27 @@ export const useAppStore = create<AppState & {
           };
 
           // Step 8: Add AI response to conversation
-          set((state) => {
-            const convIndex = state.conversations.findIndex(
-              (conv) => conv.id === state.currentConversationId
+          set(produce(state => {
+            const conversation = state.conversations.find(
+              conv => conv.id === state.currentConversationId
             );
             
-            if (convIndex === -1) return state;
-            
-            const updatedConversations = [...state.conversations];
-            updatedConversations[convIndex] = {
-              ...updatedConversations[convIndex],
-              messages: [...updatedConversations[convIndex].messages, aiMessage],
-              updatedAt: new Date(),
-            };
-            
-            return { conversations: updatedConversations };
-          });
+            if (conversation) {
+              // If we were streaming, remove the streaming message
+              if (settings.ai.streamResponses) {
+                const streamingIndex = conversation.messages.findIndex(
+                  msg => msg.isStreaming === true && msg.role === 'assistant'
+                );
+                
+                if (streamingIndex >= 0) {
+                  conversation.messages.splice(streamingIndex, 1);
+                }
+              }
+              
+              conversation.messages.push(aiMessage);
+              conversation.updatedAt = new Date();
+            }
+          }));
         } catch (error) {
           // Use the enhanced error handler
           const aiError = AIErrorHandler.handleError(error);
@@ -225,22 +252,16 @@ export const useAppStore = create<AppState & {
           };
 
           // Update state with error message
-          set((state) => {
-            const convIndex = state.conversations.findIndex(
-              (conv) => conv.id === state.currentConversationId
+          set(produce(state => {
+            const conversation = state.conversations.find(
+              conv => conv.id === state.currentConversationId
             );
             
-            if (convIndex === -1) return state;
-            
-            const updatedConversations = [...state.conversations];
-            updatedConversations[convIndex] = {
-              ...updatedConversations[convIndex],
-              messages: [...updatedConversations[convIndex].messages, errorSystemMessage],
-              updatedAt: new Date(),
-            };
-            
-            return { conversations: updatedConversations };
-          });
+            if (conversation) {
+              conversation.messages.push(errorSystemMessage);
+              conversation.updatedAt = new Date();
+            }
+          }));
         } finally {
           set({ isProcessingMessage: false });
         }
@@ -259,96 +280,64 @@ export const useAppStore = create<AppState & {
   },
 
   updateMessage: (id, updates) =>
-    set((state) => {
-      const convIndex = state.conversations.findIndex(
-        (conv) => conv.id === state.currentConversationId
+    set(produce(state => {
+      const conversation = state.conversations.find(
+        conv => conv.id === state.currentConversationId
       );
       
-      if (convIndex === -1) return state;
+      if (!conversation) return;
       
-      const updatedConversations = [...state.conversations];
-      const msgIndex = updatedConversations[convIndex].messages.findIndex(
-        (msg) => msg.id === id
-      );
+      const message = conversation.messages.find(msg => msg.id === id);
       
-      if (msgIndex === -1) return state;
-      
-      // Create a new messages array with the updated message
-      const updatedMessages = [...updatedConversations[convIndex].messages];
-      updatedMessages[msgIndex] = {
-        ...updatedMessages[msgIndex],
-        ...updates
-      };
-      
-      // Update the conversation with the new messages array
-      updatedConversations[convIndex] = {
-        ...updatedConversations[convIndex],
-        messages: updatedMessages,
-        updatedAt: new Date(),
-      };
-      
-      return { conversations: updatedConversations };
-    }),
+      if (message) {
+        Object.assign(message, updates);
+        conversation.updatedAt = new Date();
+      }
+    })),
 
   setIsProcessingMessage: (isProcessing) =>
     set({ isProcessingMessage }),
 
   deleteConversation: (id) =>
-    set((state) => {
-      const filteredConversations = state.conversations.filter(
-        (conv) => conv.id !== id
-      );
+    set(produce(state => {
+      const index = state.conversations.findIndex(conv => conv.id === id);
       
-      return {
-        conversations: filteredConversations,
-        currentConversationId:
-          id === state.currentConversationId
-            ? filteredConversations[0]?.id || null
-            : state.currentConversationId,
-      };
-    }),
+      if (index !== -1) {
+        state.conversations.splice(index, 1);
+        
+        // If deleted conversation was the current one, select another
+        if (id === state.currentConversationId) {
+          state.currentConversationId = state.conversations[0]?.id || null;
+        }
+      }
+    })),
 
   updatePreferences: (preferences) =>
-    set((state) => ({
-      preferences: {
-        ...state.preferences,
-        ...preferences,
-      },
+    set(produce(state => {
+      Object.assign(state.preferences, preferences);
     })),
 
   updateCurrentConversationTitle: (title) =>
-    set((state) => {
-      const convIndex = state.conversations.findIndex(
-        (conv) => conv.id === state.currentConversationId
+    set(produce(state => {
+      const conversation = state.conversations.find(
+        conv => conv.id === state.currentConversationId
       );
       
-      if (convIndex === -1) return state;
-      
-      const updatedConversations = [...state.conversations];
-      updatedConversations[convIndex] = {
-        ...updatedConversations[convIndex],
-        title
-      };
-      
-      return { conversations: updatedConversations };
-    }),
+      if (conversation) {
+        conversation.title = title;
+      }
+    })),
 
   clearMessages: () =>
-    set((state) => {
-      const convIndex = state.conversations.findIndex(
-        (conv) => conv.id === state.currentConversationId
+    set(produce(state => {
+      const conversation = state.conversations.find(
+        conv => conv.id === state.currentConversationId
       );
       
-      if (convIndex === -1) return state;
-      
-      const updatedConversations = [...state.conversations];
-      updatedConversations[convIndex] = {
-        ...updatedConversations[convIndex],
-        messages: []
-      };
-      
-      return { conversations: updatedConversations };
-    }),
+      if (conversation) {
+        conversation.messages = [];
+      }
+    })),
 }));
 
 // Validate and sanitize the message

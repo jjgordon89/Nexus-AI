@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Message } from '../../types';
 import { Avatar } from '../ui/avatar';
 import { BotIcon, User2Icon } from 'lucide-react';
@@ -13,6 +13,50 @@ interface MessageItemProps {
 
 const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  
+  // Memoize the avatar component
+  const avatarComponent = useMemo(() => (
+    <Avatar>
+      {isUser ? (
+        <User2Icon className="h-6 w-6 text-primary-300" />
+      ) : (
+        <BotIcon className="h-6 w-6 text-secondary-300" />
+      )}
+    </Avatar>
+  ), [isUser]);
+  
+  // Memoize the message header
+  const messageHeader = useMemo(() => (
+    <div className="flex items-center gap-2">
+      <h3 className="font-semibold text-sm">
+        {isUser ? 'You' : 'NexusAI'}
+      </h3>
+      <span className="text-xs text-muted-foreground">
+        {formatDate(message.timestamp)}
+      </span>
+    </div>
+  ), [isUser, message.timestamp]);
+  
+  // Memoize attachments if they exist
+  const attachmentsElement = useMemo(() => {
+    if (!message.attachments || message.attachments.length === 0) return null;
+    
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        {message.attachments.map((attachment) => (
+          <div 
+            key={attachment.id}
+            className="px-3 py-1.5 text-xs rounded-full bg-muted flex items-center gap-1.5"
+          >
+            <span>{attachment.name}</span>
+            <span className="text-muted-foreground">
+              ({Math.round(attachment.size / 1024)} KB)
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }, [message.attachments]);
 
   return (
     <motion.div
@@ -20,28 +64,16 @@ const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={`py-6 ${isUser ? 'bg-transparent' : 'bg-muted/20'}`}
+      layout
     >
       <div className="container max-w-4xl mx-auto px-4">
         <div className="flex items-start gap-4">
           <div className="shrink-0">
-            <Avatar>
-              {isUser ? (
-                <User2Icon className="h-6 w-6 text-primary-300" />
-              ) : (
-                <BotIcon className="h-6 w-6 text-secondary-300" />
-              )}
-            </Avatar>
+            {avatarComponent}
           </div>
 
           <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm">
-                {isUser ? 'You' : 'NexusAI'}
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(message.timestamp)}
-              </span>
-            </div>
+            {messageHeader}
 
             {message.isThinking ? (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -53,21 +85,7 @@ const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
               </div>
             )}
 
-            {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {message.attachments.map((attachment) => (
-                  <div 
-                    key={attachment.id}
-                    className="px-3 py-1.5 text-xs rounded-full bg-muted flex items-center gap-1.5"
-                  >
-                    <span>{attachment.name}</span>
-                    <span className="text-muted-foreground">
-                      ({Math.round(attachment.size / 1024)} KB)
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {attachmentsElement}
           </div>
         </div>
       </div>
@@ -75,5 +93,15 @@ const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
   );
 };
 
-// Use memo to prevent unnecessary re-renders
-export const MessageItem = memo(MessageItemComponent);
+// Use memo to prevent unnecessary re-renders with deep comparison
+export const MessageItem = memo(
+  MessageItemComponent,
+  (prevProps, nextProps) => {
+    // Only re-render if content or isThinking changed
+    return (
+      prevProps.message.id === nextProps.message.id &&
+      prevProps.message.content === nextProps.message.content &&
+      prevProps.message.isThinking === nextProps.message.isThinking
+    );
+  }
+);

@@ -14,6 +14,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   isThinking?: boolean;
+  isStreaming?: boolean;  // New property for streaming messages
   attachments?: Attachment[];
 }
 

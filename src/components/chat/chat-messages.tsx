@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MessageItem } from './message-item';
 import { Loading } from '../ui/loading';
 import { Message } from '../../types';
@@ -12,32 +12,47 @@ interface ChatMessagesProps {
   isProcessing: boolean;
 }
 
-export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isProcessing }) => {
+export const ChatMessages: React.FC<ChatMessagesProps> = React.memo(({ messages, isProcessing }) => {
+  // Use useMemo to avoid recreating the message elements on every render
+  const messageElements = useMemo(() => 
+    messages.map((message) => (
+      <motion.div
+        key={message.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        className="mb-6"
+        layout
+      >
+        <MemoizedMessageItem message={message} />
+      </motion.div>
+    )),
+    [messages]
+  );
+
+  // Memoize the loading indicator to prevent recreating it on every render
+  const loadingIndicator = useMemo(() => 
+    isProcessing && (
+      <motion.div
+        key="loading-indicator"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 p-4"
+        layout
+      >
+        <Loading text="AI is thinking..." />
+      </motion.div>
+    ),
+    [isProcessing]
+  );
+
   return (
     <AnimatePresence mode="popLayout">
-      {messages.map((message) => (
-        <motion.div
-          key={message.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="mb-6"
-        >
-          <MemoizedMessageItem message={message} />
-        </motion.div>
-      ))}
-      
-      {isProcessing && (
-        <motion.div
-          key="loading-indicator"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 p-4"
-        >
-          <Loading text="AI is thinking..." />
-        </motion.div>
-      )}
+      {messageElements}
+      {loadingIndicator}
     </AnimatePresence>
   );
-};
+});
+
+ChatMessages.displayName = 'ChatMessages';

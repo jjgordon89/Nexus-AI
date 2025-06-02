@@ -10,22 +10,17 @@ import { nanoid } from 'nanoid';
 
 export const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { 
-    currentConversationId, 
-    conversations, 
-    addMessage,
-    isProcessingMessage 
-  } = useAppStore(state => ({
-    currentConversationId: state.currentConversationId,
-    conversations: state.conversations,
-    addMessage: state.addMessage,
-    isProcessingMessage: state.isProcessingMessage
-  }));
   
-  const currentConversation = useMemo(() => 
-    conversations.find(conv => conv.id === currentConversationId),
-    [conversations, currentConversationId]
-  );
+  // Use selectors to minimize re-renders
+  const currentConversationId = useAppStore(state => state.currentConversationId);
+  const isProcessingMessage = useAppStore(state => state.isProcessingMessage);
+  const addMessage = useAppStore(state => state.addMessage);
+  
+  // Use memoized selector for conversation data
+  const currentConversation = useAppStore(useCallback(state => 
+    state.conversations.find(conv => conv.id === currentConversationId),
+    [currentConversationId]
+  ));
   
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -33,9 +28,11 @@ export const ChatContainer: React.FC = () => {
     }
   }, []);
 
+  // Only trigger scroll when messages change
+  const messagesLength = currentConversation?.messages?.length || 0;
   useEffect(() => {
     scrollToBottom();
-  }, [currentConversation?.messages?.length, scrollToBottom]);
+  }, [messagesLength, scrollToBottom]);
 
   const handleSendMessage = useCallback(async (content: string, files?: File[]) => {
     if ((!content.trim() && (!files || files.length === 0)) || !currentConversation) return;
