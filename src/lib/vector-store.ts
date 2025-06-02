@@ -1,7 +1,5 @@
 import { Message } from '../types';
 
-const API_BASE_URL = '/api/vector';
-
 export class VectorStore {
   private static instance: VectorStore;
 
@@ -14,85 +12,36 @@ export class VectorStore {
     return VectorStore.instance;
   }
 
+  // Mock implementation that returns empty or mock data
   async addMessage(message: Message): Promise<void> {
-    try {
-      await fetch(`${API_BASE_URL}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-    } catch (error) {
-      console.error('Failed to add message:', error);
-      throw error;
-    }
+    console.log('Mock vector store: message added', message.id);
+    // In a real implementation, this would store the message in a vector database
+    return Promise.resolve();
   }
 
   async searchSimilarMessages(query: string, limit: number = 5): Promise<Message[]> {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/messages/search?query=${encodeURIComponent(query)}&limit=${limit}`
-      );
-      const results = await response.json();
-      return results.map((result: any) => ({
-        id: result.id,
-        content: result.text,
-        role: result.metadata.role,
-        timestamp: new Date(result.metadata.timestamp),
-      }));
-    } catch (error) {
-      console.error('Failed to search messages:', error);
-      throw error;
-    }
+    console.log('Mock vector store: searching for', query);
+    // Return empty array as we don't have a real database
+    return Promise.resolve([]);
   }
 
   async addDocument(id: string, content: string, metadata: Record<string, any>): Promise<void> {
-    try {
-      await fetch(`${API_BASE_URL}/documents`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, content, metadata }),
-      });
-    } catch (error) {
-      console.error('Failed to add document:', error);
-      throw error;
-    }
+    console.log('Mock vector store: document added', id);
+    return Promise.resolve();
   }
 
   async searchDocuments(query: string, limit: number = 5): Promise<Array<{ id: string; content: string; metadata: Record<string, any> }>> {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/documents/search?query=${encodeURIComponent(query)}&limit=${limit}`
-      );
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to search documents:', error);
-      throw error;
-    }
+    console.log('Mock vector store: searching documents for', query);
+    return Promise.resolve([]);
   }
 
   async deleteMessage(id: string): Promise<void> {
-    try {
-      await fetch(`${API_BASE_URL}/messages/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (error) {
-      console.error('Failed to delete message:', error);
-      throw error;
-    }
+    console.log('Mock vector store: message deleted', id);
+    return Promise.resolve();
   }
 
   async deleteDocument(id: string): Promise<void> {
-    try {
-      await fetch(`${API_BASE_URL}/documents/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (error) {
-      console.error('Failed to delete document:', error);
-      throw error;
-    }
+    console.log('Mock vector store: document deleted', id);
+    return Promise.resolve();
   }
 }
