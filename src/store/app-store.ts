@@ -6,6 +6,7 @@ import { useSettingsStore } from './settings-store';
 import { AIError } from '../lib/ai/error';
 import { AIErrorHandler } from '../lib/ai/error-handler';
 import { nanoid } from 'nanoid';
+import { produce } from 'immer';
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -104,18 +105,25 @@ export const useAppStore = create<AppState & {
       throw new AIError(`Conversation has reached the maximum limit of ${MAX_MESSAGES_PER_CONVERSATION} messages`);
     }
 
-    // Add user message
-    set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv.id === state.currentConversationId
-          ? {
-              ...conv,
-              messages: [...conv.messages, message],
-              updatedAt: new Date(),
-            }
-          : conv
-      ),
-    }));
+    // Add user message - use immutable update pattern for better performance
+    set((state) => {
+      // Find the index of the conversation to update
+      const convIndex = state.conversations.findIndex(
+        (conv) => conv.id === state.currentConversationId
+      );
+      
+      if (convIndex === -1) return state;
+      
+      // Create a new conversations array with the updated conversation
+      const updatedConversations = [...state.conversations];
+      updatedConversations[convIndex] = {
+        ...updatedConversations[convIndex],
+        messages: [...updatedConversations[convIndex].messages, message],
+        updatedAt: new Date(),
+      };
+      
+      return { conversations: updatedConversations };
+    });
 
     // If it's a user message, generate AI response
     if (message.role === 'user') {
@@ -142,6 +150,16 @@ export const useAppStore = create<AppState & {
 
         incrementRateLimit();
 
+        // Get the latest conversation state after user message was added
+        const updatedState = get();
+        const updatedConversation = updatedState.conversations.find(
+          (conv) => conv.id === updatedState.currentConversationId
+        );
+        
+        if (!updatedConversation) {
+          throw new AIError('Conversation not found');
+        }
+
         const response = await provider.chat({
           model: settings.ai.model,
           messages: [
@@ -149,14 +167,10 @@ export const useAppStore = create<AppState & {
               role: 'system',
               content: settings.ai.systemMessage || 'You are a helpful AI assistant.',
             },
-            ...conversation.messages.map((msg) => ({
+            ...updatedConversation.messages.map((msg) => ({
               role: msg.role,
               content: msg.content,
             })),
-            {
-              role: message.role,
-              content: message.content,
-            }
           ],
           temperature: settings.ai.temperature,
           maxTokens: settings.ai.maxTokens,
@@ -170,17 +184,23 @@ export const useAppStore = create<AppState & {
           timestamp: new Date(),
         };
 
-        set((state) => ({
-          conversations: state.conversations.map((conv) =>
-            conv.id === state.currentConversationId
-              ? {
-                  ...conv,
-                  messages: [...conv.messages, aiMessage],
-                  updatedAt: new Date(),
-                }
-              : conv
-          ),
-        }));
+        // Update state efficiently with AI response
+        set((state) => {
+          const convIndex = state.conversations.findIndex(
+            (conv) => conv.id === state.currentConversationId
+          );
+          
+          if (convIndex === -1) return state;
+          
+          const updatedConversations = [...state.conversations];
+          updatedConversations[convIndex] = {
+            ...updatedConversations[convIndex],
+            messages: [...updatedConversations[convIndex].messages, aiMessage],
+            updatedAt: new Date(),
+          };
+          
+          return { conversations: updatedConversations };
+        });
       } catch (error) {
         // Use the enhanced error handler
         const aiError = AIErrorHandler.handleError(error);
@@ -192,17 +212,23 @@ export const useAppStore = create<AppState & {
           timestamp: new Date(),
         };
 
-        set((state) => ({
-          conversations: state.conversations.map((conv) =>
-            conv.id === state.currentConversationId
-              ? {
-                  ...conv,
-                  messages: [...conv.messages, errorSystemMessage],
-                  updatedAt: new Date(),
-                }
-              : conv
-          ),
-        }));
+        // Update state with error message
+        set((state) => {
+          const convIndex = state.conversations.findIndex(
+            (conv) => conv.id === state.currentConversationId
+          );
+          
+          if (convIndex === -1) return state;
+          
+          const updatedConversations = [...state.conversations];
+          updatedConversations[convIndex] = {
+            ...updatedConversations[convIndex],
+            messages: [...updatedConversations[convIndex].messages, errorSystemMessage],
+            updatedAt: new Date(),
+          };
+          
+          return { conversations: updatedConversations };
+        });
       } finally {
         set({ isProcessingMessage: false });
       }
@@ -210,22 +236,39 @@ export const useAppStore = create<AppState & {
   },
 
   updateMessage: (id, updates) =>
-    set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv.id === state.currentConversationId
-          ? {
-              ...conv,
-              messages: conv.messages.map((msg) =>
-                msg.id === id ? { ...msg, ...updates } : msg
-              ),
-              updatedAt: new Date(),
-            }
-          : conv
-      ),
-    })),
+    set((state) => {
+      const convIndex = state.conversations.findIndex(
+        (conv) => conv.id === state.currentConversationId
+      );
+      
+      if (convIndex === -1) return state;
+      
+      const updatedConversations = [...state.conversations];
+      const msgIndex = updatedConversations[convIndex].messages.findIndex(
+        (msg) => msg.id === id
+      );
+      
+      if (msgIndex === -1) return state;
+      
+      // Create a new messages array with the updated message
+      const updatedMessages = [...updatedConversations[convIndex].messages];
+      updatedMessages[msgIndex] = {
+        ...updatedMessages[msgIndex],
+        ...updates
+      };
+      
+      // Update the conversation with the new messages array
+      updatedConversations[convIndex] = {
+        ...updatedConversations[convIndex],
+        messages: updatedMessages,
+        updatedAt: new Date(),
+      };
+      
+      return { conversations: updatedConversations };
+    }),
 
   setIsProcessingMessage: (isProcessing) =>
-    set({ isProcessingMessage: isProcessing }),
+    set({ isProcessingMessage }),
 
   deleteConversation: (id) =>
     set((state) => {
@@ -251,20 +294,36 @@ export const useAppStore = create<AppState & {
     })),
 
   updateCurrentConversationTitle: (title) =>
-    set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv.id === state.currentConversationId
-          ? { ...conv, title }
-          : conv
-      ),
-    })),
+    set((state) => {
+      const convIndex = state.conversations.findIndex(
+        (conv) => conv.id === state.currentConversationId
+      );
+      
+      if (convIndex === -1) return state;
+      
+      const updatedConversations = [...state.conversations];
+      updatedConversations[convIndex] = {
+        ...updatedConversations[convIndex],
+        title
+      };
+      
+      return { conversations: updatedConversations };
+    }),
 
   clearMessages: () =>
-    set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv.id === state.currentConversationId
-          ? { ...conv, messages: [] }
-          : conv
-      ),
-    })),
+    set((state) => {
+      const convIndex = state.conversations.findIndex(
+        (conv) => conv.id === state.currentConversationId
+      );
+      
+      if (convIndex === -1) return state;
+      
+      const updatedConversations = [...state.conversations];
+      updatedConversations[convIndex] = {
+        ...updatedConversations[convIndex],
+        messages: []
+      };
+      
+      return { conversations: updatedConversations };
+    }),
 }));

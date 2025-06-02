@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Message } from '../../types';
 import { Avatar } from '../ui/avatar';
 import { BotIcon, User2Icon } from 'lucide-react';
@@ -11,7 +11,7 @@ interface MessageItemProps {
   message: Message;
 }
 
-export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
   const isUser = message.role === 'user';
 
   return (
@@ -74,3 +74,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     </motion.div>
   );
 };
+
+// Use memo to prevent unnecessary re-renders
+export const MessageItem = memo(MessageItemComponent);

@@ -9,6 +9,9 @@ import { Message, Attachment } from '../../types';
 import { FileHandler } from '../../lib/file-handler';
 import { nanoid } from 'nanoid';
 
+// Memoized MessageItem to prevent unnecessary re-renders
+const MemoizedMessageItem = React.memo(MessageItem);
+
 export const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
@@ -16,7 +19,12 @@ export const ChatContainer: React.FC = () => {
     conversations, 
     addMessage,
     isProcessingMessage 
-  } = useAppStore();
+  } = useAppStore(state => ({
+    currentConversationId: state.currentConversationId,
+    conversations: state.conversations,
+    addMessage: state.addMessage,
+    isProcessingMessage: state.isProcessingMessage
+  }));
   
   const currentConversation = useMemo(() => 
     conversations.find(conv => conv.id === currentConversationId),
@@ -24,14 +32,16 @@ export const ChatContainer: React.FC = () => {
   );
   
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [currentConversation?.messages, scrollToBottom]);
+  }, [currentConversation?.messages?.length, scrollToBottom]);
 
-  const handleSendMessage = async (content: string, files?: File[]) => {
+  const handleSendMessage = useCallback(async (content: string, files?: File[]) => {
     if ((!content.trim() && (!files || files.length === 0)) || !currentConversation) return;
 
     let attachments: Attachment[] | undefined;
@@ -47,10 +57,16 @@ export const ChatContainer: React.FC = () => {
           const attachment = await FileHandler.createAttachment(file);
           attachments.push(attachment);
           
-          // For text-based files, extract content and append to message
+          // Extract content from files
           const fileContent = await FileHandler.extractContent(file);
           if (fileContent) {
-            enhancedContent += `\n\n**Content from ${file.name}:**\n\`\`\`\n${fileContent.substring(0, 1000)}${fileContent.length > 1000 ? '...(content truncated)' : ''}\n\`\`\``;
+            // Truncate content to avoid performance issues with very large files
+            const maxContentLength = 2000;
+            const truncatedContent = fileContent.length > maxContentLength 
+              ? fileContent.substring(0, maxContentLength) + '...(content truncated)'
+              : fileContent;
+              
+            enhancedContent += `\n\n**Content from ${file.name}:**\n\`\`\`\n${truncatedContent}\n\`\`\``;
           }
         }
       } catch (error) {
@@ -69,11 +85,12 @@ export const ChatContainer: React.FC = () => {
     try {
       await addMessage(message);
     } catch (error) {
-      // Error is now handled by the store's error handling
+      // Error is handled by the store's error handling
       console.error('Failed to send message:', error);
     }
-  };
+  }, [currentConversation, addMessage]);
 
+  // Don't render anything if no conversation is selected
   if (!currentConversation) {
     return (
       <div className="flex flex-col h-screen items-center justify-center text-muted-foreground">
@@ -98,12 +115,13 @@ export const ChatContainer: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className="mb-6"
               >
-                <MessageItem message={message} />
+                <MemoizedMessageItem message={message} />
               </motion.div>
             ))}
             
             {isProcessingMessage && (
               <motion.div
+                key="loading-indicator"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-3 p-4"
