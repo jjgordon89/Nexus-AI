@@ -48,9 +48,9 @@ export const ChatContainer: React.FC = () => {
           attachments.push(attachment);
           
           // For text-based files, extract content and append to message
-          if (file.type.startsWith('text/') || file.type === 'application/json') {
-            const fileContent = await FileHandler.extractContent(file);
-            enhancedContent += `\n\n**Content from ${file.name}:**\n\`\`\`\n${fileContent}\n\`\`\``;
+          const fileContent = await FileHandler.extractContent(file);
+          if (fileContent) {
+            enhancedContent += `\n\n**Content from ${file.name}:**\n\`\`\`\n${fileContent.substring(0, 1000)}${fileContent.length > 1000 ? '...(content truncated)' : ''}\n\`\`\``;
           }
         }
       } catch (error) {

@@ -1,7 +1,6 @@
 import { AIProviderFactory } from './ai/factory';
 import { useSettingsStore } from '../store/settings-store';
 import { SUPPORTED_FILE_TYPES } from '../types/documents';
-import createHttpError from 'http-errors';
 
 export class DocumentProcessor {
   private maxFileSize = 25 * 1024 * 1024; // 25MB
@@ -9,13 +8,13 @@ export class DocumentProcessor {
   async processFile(file: File): Promise<string> {
     // Validate file size
     if (file.size > this.maxFileSize) {
-      throw createHttpError(413, 'File size exceeds 25MB limit');
+      throw new Error('File size exceeds 25MB limit');
     }
 
     // Validate file type
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (!extension || !this.isSupportedFileType(extension)) {
-      throw createHttpError(415, 'Unsupported file type');
+      throw new Error('Unsupported file type');
     }
 
     try {
@@ -23,7 +22,7 @@ export class DocumentProcessor {
       return content;
     } catch (error) {
       console.error('Error processing document:', error);
-      throw createHttpError(500, 'Failed to process document');
+      throw new Error('Failed to process document');
     }
   }
 
@@ -50,44 +49,64 @@ export class DocumentProcessor {
       case 'csv':
         return this.extractCSVContent(file);
       
+      case 'json':
+        return this.extractJSONContent(file);
+        
       default:
-        throw createHttpError(415, 'Unsupported file type');
+        throw new Error('Unsupported file type');
     }
   }
 
   private async extractTextContent(file: File): Promise<string> {
-    const text = await file.text();
-    return text;
+    return await file.text();
   }
 
   private async extractPDFContent(file: File): Promise<string> {
-    // PDF extraction would be implemented here
-    // For now, return placeholder
-    return `[PDF Content from ${file.name}]`;
+    // In a full implementation, we would use a PDF extraction library
+    // For now, we'll return a simplified version indicating the PDF content
+    const fileName = file.name;
+    const fileSize = (file.size / 1024).toFixed(2);
+    return `[PDF Document: ${fileName} (${fileSize} KB)]`;
   }
 
   private async extractWordContent(file: File): Promise<string> {
-    // Word document extraction would be implemented here
-    // For now, return placeholder
-    return `[Word Content from ${file.name}]`;
+    // In a full implementation, we would use a Word document extraction library
+    // For now, we'll return a simplified version indicating the Word content
+    const fileName = file.name;
+    const fileSize = (file.size / 1024).toFixed(2);
+    return `[Word Document: ${fileName} (${fileSize} KB)]`;
   }
 
   private async extractCSVContent(file: File): Promise<string> {
     const text = await file.text();
-    // Basic CSV parsing
+    // Basic CSV parsing to create a table representation
     const rows = text.split('\n').map(row => row.split(','));
-    return rows.map(row => row.join('\t')).join('\n');
+    const formattedRows = rows.map(row => row.join('\t')).join('\n');
+    return `CSV Data from ${file.name}:\n\n${formattedRows}`;
+  }
+  
+  private async extractJSONContent(file: File): Promise<string> {
+    const text = await file.text();
+    try {
+      // Try to parse and format the JSON
+      const json = JSON.parse(text);
+      return `JSON Data from ${file.name}:\n\n${JSON.stringify(json, null, 2)}`;
+    } catch (e) {
+      // If parsing fails, return the raw text
+      return text;
+    }
   }
 
   async createEmbeddings(text: string): Promise<number[]> {
     const settings = useSettingsStore.getState().settings;
     const provider = AIProviderFactory.createProvider(
-      settings.ai.model.split('-')[0],
-      settings.ai.apiKey!
+      settings.ai.provider,
+      settings.ai.apiKey || '',
+      settings.ai.baseUrl
     );
 
-    if ('createEmbedding' in provider) {
-      return provider.createEmbedding(text);
+    if ('createEmbedding' in provider && typeof provider.createEmbedding === 'function') {
+      return await provider.createEmbedding(text);
     }
 
     throw new Error('Selected provider does not support embeddings');

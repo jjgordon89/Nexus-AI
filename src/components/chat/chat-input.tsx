@@ -18,6 +18,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
   const [isFocused, setIsFocused] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -66,39 +67,56 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
     
     if (files.length === 0) return;
     
+    setIsProcessingFile(true);
     const validFiles: File[] = [];
     const newAttachments: Attachment[] = [];
     
-    for (const file of files) {
-      const validation = FileHandler.validateFile(file);
-      
-      if (!validation.valid) {
-        toast({
-          title: 'Invalid File',
-          description: validation.message,
-          variant: 'destructive',
-        });
-        continue;
+    try {
+      for (const file of files) {
+        const validation = FileHandler.validateFile(file);
+        
+        if (!validation.valid) {
+          toast({
+            title: 'Invalid File',
+            description: validation.message,
+            variant: 'destructive',
+          });
+          continue;
+        }
+        
+        try {
+          const attachment = await FileHandler.createAttachment(file);
+          validFiles.push(file);
+          newAttachments.push(attachment);
+          
+          // Preview file content for text-based files
+          if (file.type === 'text/plain' || file.type === 'text/markdown' || file.type === 'application/json' || file.type === 'text/csv') {
+            const preview = await FileHandler.extractContent(file);
+            console.log(`File preview for ${file.name}:`, preview.substring(0, 200) + (preview.length > 200 ? '...' : ''));
+          }
+        } catch (error) {
+          toast({
+            title: 'Error',
+            description: error instanceof Error ? error.message : 'Failed to process file',
+            variant: 'destructive',
+          });
+        }
       }
       
-      try {
-        const attachment = await FileHandler.createAttachment(file);
-        validFiles.push(file);
-        newAttachments.push(attachment);
-      } catch (error) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+      setAttachments(prev => [...prev, ...newAttachments]);
+      
+      if (validFiles.length > 0) {
         toast({
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to process file',
-          variant: 'destructive',
+          title: 'Files Added',
+          description: `${validFiles.length} file(s) ready to be sent`,
         });
       }
+    } finally {
+      setIsProcessingFile(false);
+      // Reset the file input
+      e.target.value = '';
     }
-    
-    setSelectedFiles(prev => [...prev, ...validFiles]);
-    setAttachments(prev => [...prev, ...newAttachments]);
-    
-    // Reset the file input
-    e.target.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -184,7 +202,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
               size="icon"
               onClick={handleFileUpload}
               className="shrink-0 text-muted-foreground hover:text-foreground"
-              disabled={isProcessing}
+              disabled={isProcessing || isProcessingFile}
             >
               <PaperclipIcon className="h-5 w-5" />
               <span className="sr-only">Attach file</span>
@@ -207,8 +225,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
                 onKeyDown={handleKeyDown}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder={isProcessing ? "Please wait..." : "Message NexusAI..."}
-                disabled={isProcessing}
+                placeholder={isProcessing || isProcessingFile ? "Please wait..." : "Message NexusAI..."}
+                disabled={isProcessing || isProcessingFile}
                 rows={1}
                 className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none resize-none py-2.5 px-2 text-sm max-h-[200px] min-h-[44px] disabled:opacity-50"
               />
@@ -220,7 +238,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
                 variant="ghost" 
                 size="icon"
                 className="shrink-0 text-muted-foreground hover:text-foreground"
-                disabled={isProcessing}
+                disabled={isProcessing || isProcessingFile}
               >
                 <MicIcon className="h-5 w-5" />
                 <span className="sr-only">Voice input</span>
@@ -231,7 +249,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
                 variant="ghost" 
                 size="icon"
                 className="shrink-0 text-muted-foreground hover:text-foreground"
-                disabled={isProcessing}
+                disabled={isProcessing || isProcessingFile}
               >
                 <BrainIcon className="h-5 w-5" />
                 <span className="sr-only">AI options</span>
@@ -241,7 +259,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isProcessin
                 type="submit"
                 variant="gradient" 
                 size="icon"
-                disabled={(!message.trim() && selectedFiles.length === 0) || isProcessing}
+                disabled={((!message.trim() && selectedFiles.length === 0) || isProcessing || isProcessingFile)}
                 className="shrink-0"
               >
                 <SendIcon className="h-4 w-4" />

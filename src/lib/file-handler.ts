@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { Attachment } from '../types';
+import { DocumentProcessor } from './document-processor';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_FILE_TYPES = [
@@ -13,6 +14,8 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 export class FileHandler {
+  private static documentProcessor = new DocumentProcessor();
+
   /**
    * Validates a file for size and type
    */
@@ -92,20 +95,11 @@ export class FileHandler {
    * Extracts text content from different file types
    */
   static async extractContent(file: File): Promise<string> {
-    const fileType = file.type;
-    
-    if (fileType === 'text/plain' || fileType === 'text/markdown' || fileType === 'application/json') {
-      return this.readAsText(file);
+    try {
+      return await this.documentProcessor.processFile(file);
+    } catch (error) {
+      console.error('Error extracting content:', error);
+      return `[Content extraction failed for ${file.name}]`;
     }
-    
-    if (fileType === 'text/csv') {
-      const text = await this.readAsText(file);
-      // Simple CSV parsing
-      return text.split('\n').map(line => line.split(',').join('\t')).join('\n');
-    }
-    
-    // For other file types, we'd need specialized libraries
-    // For now, just return a placeholder
-    return `[Content of ${file.name} (${file.type})]`;
   }
 }
