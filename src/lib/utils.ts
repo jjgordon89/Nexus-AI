@@ -80,18 +80,6 @@ export function getFileExtension(filename: string): string {
 }
 
 /**
- * Available AI model options
- */
-export const MODEL_OPTIONS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'ollama-llama3', label: 'Llama 3 (Local)' },
-  { value: 'ollama-mistral', label: 'Mistral (Local)' },
-  { value: 'grok-1', label: 'Grok-1' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-];
-
-/**
  * Formats file size to a human-readable string with appropriate units
  */
 export function formatFileSize(bytes: number, decimals: number = 2): string {

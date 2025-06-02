@@ -1,5 +1,8 @@
 import { AIModel } from './types';
 
+/**
+ * Dictionary of available AI models organized by provider
+ */
 export const AI_MODELS: Record<string, AIModel[]> = {
   openai: [
     {

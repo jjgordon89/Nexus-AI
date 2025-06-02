@@ -31,4 +31,4 @@ const Tooltip = ({ children, content }: { children: React.ReactNode; content: Re
   </TooltipRoot>
 );
 
-export { Tooltip, TooltipProvider,    };
+export { Tooltip, TooltipProvider, TooltipRoot, TooltipTrigger, TooltipContent };
