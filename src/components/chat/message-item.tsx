@@ -77,7 +77,7 @@ const MessageItemComponent: React.FC<MessageItemProps> = ({ message }) => {
 
             {message.isThinking ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Loading size="sm\" text="Thinking..." />
+                <Loading size="sm\" text=\"Thinking..." />
               </div>
             ) : (
               <MessageContent content={message.content} />
