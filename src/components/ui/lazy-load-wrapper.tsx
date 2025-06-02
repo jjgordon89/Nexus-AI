@@ -32,7 +32,7 @@ export const LazyVirtualizedMessageList = (props: any) => (
   <LazyLoadWrapper
     loader={() => import('../chat/virtualized-message-list').then(module => ({ default: module.VirtualizedMessageList }))}
     props={props}
-    fallback={<Loading text="Loading message list..." center />}
+    fallback={<Loading text="Loading message list...\" center />}
   />
 );
 
